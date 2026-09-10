@@ -96,14 +96,18 @@ exclude:
 #       dalla VPC. E' questo controllo a rendere solida l'accettazione del
 #       rischio: se decade, il finding va riaperto.
 #
-#       ATTENZIONE — l'ignore puntuale di un finding Snyk Code su codice di
-#       prima parte NON si configura tramite questo file: la sezione `ignore`
-#       del policy file governa le vulnerabilita' Snyk Open Source (SCA),
+#       NOTA — l'ignore puntuale di un finding Snyk Code su codice di prima
+#       parte NON si configura tramite questo file: la sezione `ignore` del
+#       policy file governa le vulnerabilita' Snyk Open Source (SCA),
 #       identificate da ID tipo SNYK-JS-*, non le regole SAST.
-#       Per chiudere questo finding usare una delle due strade:
-#         a) ignore dalla UI Snyk (consigliata: prevede scadenza e workflow di
-#            approvazione, requisito tipico delle policy enterprise);
-#         b) soppressione inline nel sorgente, con commento `deepcode ignore`
-#            immediatamente sopra la riga 344 di webcb/ws.js.
-#       Verificare la sintassi esatta di (b) sulla documentazione della
-#       versione di Snyk Code in uso prima di adottarla.
+#
+#       CHIUSURA APPLICATA (2026-09-10): soppressione inline nel sorgente,
+#       con commento `// deepcode ignore HttpToHttps: ...` immediatamente
+#       sopra la riga `const server = http.createServer(app);` in
+#       webcb/ws.js, dopo conferma che l'architettura AWS (ALB + Akamai con
+#       terminazione TLS a monte, security group che limita la porta 8080
+#       al solo SG dell'ALB) e' verificata e sicura.
+#       Se in futuro si preferisse gestire l'ignore dalla UI Snyk (con
+#       scadenza e workflow di approvazione, tipico delle policy enterprise),
+#       il commento inline andra' rimosso per evitare una doppia soppressione
+#       dello stesso finding.
