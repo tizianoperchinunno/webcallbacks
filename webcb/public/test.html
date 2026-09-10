@@ -1,0 +1,69 @@
+
+<script>
+function async_load_ospe() {
+	var OSPE_SERVICE_URL = 'https://webcb.costacrociere.it/rule';
+	OSPE_SERVICE_URL += '?l=' + encodeURIComponent(window.location.href);
+	OSPE_SERVICE_URL += '&queue=I_CBWB2C';
+	OSPE_SERVICE_URL += '&tsoff='+(new Date().getTimezoneOffset());
+	var s = document.createElement('script');
+	s.type = 'text/javascript';
+	s.src = OSPE_SERVICE_URL
+	s.async = true;
+	var j = document.getElementsByTagName('script') [0];
+	j.parentNode.insertBefore(s, j);
+};
+if (window.attachEvent) {
+	window.attachEvent('onload', async_load_ospe);
+} else {
+	window.addEventListener('load', async_load_ospe, false);
+}
+
+
+</script>
+
+<script>
+function createCB(){
+	fetch("https://webcb.costacrociere.it/callback", {
+	  method: "POST",
+	  body: document.getElementById("cb").value,
+	  headers: {
+		"Content-type": "application/json; charset=UTF-8"
+	  }
+	})
+	.then(response => response.json())
+	.then(result => {
+	  document.getElementById("cbout").value=JSON.stringify(result);
+	});
+}
+</script>
+
+<textarea cols=50 rows=11 id="cb">
+{
+"Queue":"I_CBWB2C",
+"Subject":"callback subject",
+"Type":"now", 
+"ScheduleDayTime": "2024-04-02T10:30:00.000Z", 
+"PhoneNumber":"+393484461572", 
+"Country":"I", 
+"OptionId":"32432", 
+"Location":"https://www.costacrociere.it" 
+}
+</textarea>
+<input type=button onclick="createCB()">
+Callback
+</input><br>
+<textarea cols=50 rows=11 id="cbout">
+</textarea>
+
+
+<pre id="controlli">
+Test sito
+
+Controlli:</pre>
+<script>
+var cont=1;
+function $enableCallMeNow(callme){
+	
+	document.getElementById("controlli").textContent+="\n" +cont + " -> " + callme;
+}
+</script>

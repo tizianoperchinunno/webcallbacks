@@ -1,0 +1,25 @@
+{
+  "name": "webcb",
+  "version": "1.0.0",
+  "main": "ws.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Tiziano Perchinunno",
+  "license": "ISC",
+  "description": "",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "ioredis": "^5.4.1",
+    "winston": "^3.13.0",
+    "winston-daily-rotate-file": "^5.0.0"
+  },
+  "overridesNote": "express 4 pinna cookie-signature a 1.0.6, che confronta le firme con sha1; 1.2.x usa crypto.timingSafeEqual. API identica (sign/unsign).",
+  "overrides": {
+    "cookie-signature": "^1.2.2"
+  }
+}

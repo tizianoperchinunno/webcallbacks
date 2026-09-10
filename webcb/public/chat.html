@@ -1,0 +1,77 @@
+<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Costa-logo-2021.svg/232px-Costa-logo-2021.svg.png">
+<pre><span id="logarea">
+</span>
+</pre>
+
+<script type="text/javascript" charset="utf-8">
+
+	
+	
+	//funzione per l'inclusione del widget	
+	(function (g, e, n, es, ys) {
+	g['_genesysJs'] = e;
+	g[e] = g[e] || function () {
+	  (g[e].q = g[e].q || []).push(arguments)
+	};
+	g[e].t = 1 * new Date();
+	g[e].c = es;
+	ys = document.createElement('script'); ys.async = 1; ys.src = n; ys.charset = 'utf-8'; document.head.appendChild(ys);
+	})(window, 'Genesys', 'https://apps.mypurecloud.ie/genesys-bootstrap/genesys.min.js', {
+	environment: 'prod-euw1',
+	deploymentId: 'e20b3a47-3655-4ba5-b230-e714bf07ca16'  ////PRODUCTION ID
+	});
+
+
+
+	
+	
+	//Sezione che permette, per ogni tipologia di pagina, di inviare informazioni a Genesys Cloud  (per effettuare il routing ad esempio)
+	Genesys("subscribe", "Messenger.ready", function(){
+		Genesys("command", "Database.set", {
+		  messaging: {
+			customAttributes: {
+			  pagetype: "bookingCabin", //possibili valori bookingCabin, bookingTariff, bookingSummary
+			  env: "PROD",   //possibili STAGE/PROD 
+			  device: "MOBILE",    //possibili MOBILE/TABLET/DESKTOP
+			  location: window.location.href,
+			  language: "it_IT",
+			  cruiseId: "AB312312",
+			  itineraryId: "RR2342"
+			}
+		  }
+		});
+	});  
+
+
+	
+	
+	
+	
+	//handler di eventi che consente ad esempio il tracciamento dell'evento con google analytics
+	
+	Genesys("subscribe", "Messenger.opened", function(){										//Apertura finestra chat
+		console.log('Aperta finestra chat');  //taggare con google analytics l'evento
+		document.getElementById("logarea").innerText+="\nApertura finestra chat";
+	});
+	
+	Genesys("subscribe", "Messenger.closed", function(){										//Chiusura finestra chat
+		console.log('Chiusura finestra chat');  //taggare con google analytics l'evento
+		document.getElementById("logarea").innerText+="\nChiusura finestra chat";
+	});
+
+	Genesys("subscribe", "Conversations.started", function(){									//Inizio conversazione
+		console.log('Conversazione iniziata');  //taggare con google analytics l'evento
+		document.getElementById("logarea").innerText+="\nConversazione iniziata";
+	});
+	
+
+		
+	Genesys("subscribe", "MessagingService.conversationDisconnected", GenesysChatDisconnessa)
+	Genesys("subscribe", "MessagingService.conversationCleared", GenesysChatDisconnessa)		
+	function GenesysChatDisconnessa(){															//Fine conversazione
+		console.log('conversationClosed');  //taggare con google analytics l'evento
+		document.getElementById("logarea").innerText+="\nConversazione terminata";	
+	}		
+	
+	
+</script>

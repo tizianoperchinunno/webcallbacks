@@ -1,0 +1,47 @@
+! Version: 20250410
+! Title: Genesys Cloud status filter
+! Last modified: 10 Apr 2025 
+! Expires: 1 hour (update frequency)
+! *** Biz:template_header.txt ***
+! 
+! Please report any unblocked adverts or problems
+! in the support site
+! or via e-mail
+! Homepage: https://asystel-bdf.it/
+! Licence: https://creativecommons.org/licenses/by-nc-nd/4.0/
+! 
+! ----------------------- Genesys Cloud Status filters-----------------------!
+
+
+!general status labels
+!apps.mypurecloud.ie##.status
+!apps.mypurecloud.ie##.secondaryStatus
+!apps.mypurecloud.ie##.primaryStatus
+!apps.mypurecloud.ie##.presence-label-group
+
+!time in status
+apps.mypurecloud.ie##.timeInStatus
+apps.mypurecloud.ie##.firstColumn.dt-cell-align-right.tis.flex-2.value-cell.dt-cell
+
+!Circle status around user
+!apps.mypurecloud.ie##.chat-presence:remove-class(/offline|busy|available|meeting|training|meal|break|away|on_queue|NOT_RESPONDING/)
+!apps.mypurecloud.ie##.image > .ember-view.chat-presence:remove-class(/offline|busy|available|meeting|training|meal|break|away|on_queue|NOT_RESPONDING/)
+!apps.mypurecloud.ie##.person-icon > !.ember-view.chat-presence:remove-class(/offline|busy|available|meeting|training|meal|break|away|on_queue|NOT_RESPONDING/)
+!apps.mypurecloud.ie##.left-bar.chat-presence:remove-class(/offline|busy|available|meeting|training|meal|break|away|on_queue|NOT_RESPONDING/)
+!apps.mypurecloud.ie##.avatar-container:remove-class(/offline|busy|available|meeting|training|meal|break|away|on_queue|NOT_RESPONDING/)
+
+!label stats
+!apps.mypurecloud.ie##.presence-label
+!apps.mypurecloud.ie##.entity-v3-presence-indicator-dot:remove-class(/offline|busy|available|meeting|training|meal|break|away|on_queue|NOT_RESPONDING/)
+!apps.mypurecloud.ie##.entity-v3-presence-label
+
+!dot circle  besides user name
+!apps.mypurecloud.ie##.entity-v3-presence-indicator-dot:style(background-color: blue !important)
+
+!dashboard
+!apps.mypurecloud.ie##.column-statusAndPresence
+
+!menu select status change
+!##.ember-view.entity-v3-presence-selector-dropdown-v2
+!##.primary-presence-selector.presence-selector
+

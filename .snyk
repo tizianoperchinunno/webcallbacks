@@ -1,0 +1,109 @@
+# Snyk policy file — progetto WebCallback (webcb + costastats)
+#
+# Perimetro: questo file governa lo scan SAST (Snyk Code) eseguito dalla radice
+# /webcallback, come da report report-2026-07-31T07-28-21.json (73 findings).
+#
+# Stato remediation al 31/07/2026: 67 findings su 73 risolti con fix di codice
+# e rimozione di dipendenze obsolete. I 7 residui sono documentati qui sotto.
+#
+# NOTA IMPORTANTE — questo file NON riduce la copertura sulle dipendenze.
+# L'esclusione di node_modules riguarda esclusivamente Snyk Code (SAST), che e'
+# progettato per il codice di prima parte. Il rischio delle librerie di terze
+# parti resta coperto da `snyk test` (SCA), che va mantenuto attivo in pipeline
+# e che su queste dipendenze non segnala alcuna CVE.
+
+version: v1.25.0
+
+# ---------------------------------------------------------------------------
+# ESCLUSIONI DI PERIMETRO
+# ---------------------------------------------------------------------------
+#
+# Chiude 6 dei 7 findings residui, tutti in codice di terze parti non
+# modificabile. Motivazioni per pacchetto:
+#
+# [1-4] winston — {lib,dist}/winston/transports/http.js:242 e :267
+#       Regola: javascript/HttpToHttps (warning) — 4 occorrenze
+#       (sorgente + build transpilata, su entrambi i progetti)
+#
+#       La riga incriminata e' `(this.ssl ? https : http).request({`: l'HTTP
+#       transport di winston sceglie il protocollo in base a options.ssl, e
+#       deve poter parlare in chiaro perche' e' una sua funzionalita'.
+#       Verificato su winston 3.19.0 (ultima pubblicata): la riga e' identica
+#       e allo stesso numero di riga della 3.13 in uso. Nessun aggiornamento
+#       risolve, ne' e' previsto che lo faccia.
+#
+#       Rischio residuo: NULLO — codice mai eseguito. webcb/logger.js e
+#       costastats/logger.js istanziano solo i transport Console e
+#       DailyRotateFile; l'HTTP transport non viene mai costruito.
+#
+# [5]   express — lib/application.js:634
+#       Regola: javascript/HttpToHttps (warning)
+#
+#       E' il corpo del metodo app.listen(), che fa `http.createServer(this)`.
+#       E' il meccanismo con cui il framework si mette in ascolto: verificato
+#       presente anche in Express 5.2.1 (riga 599), quindi nessuna versione ne
+#       e' priva.
+#
+#       Rischio residuo: NULLO — codice mai eseguito. webcb/ws.js non chiama
+#       mai app.listen(): costruisce il server esplicitamente con
+#       http.createServer(app) e poi server.listen(8080).
+#
+# [6]   etag — index.js:46
+#       Regola: javascript/InsecureHash (note)
+#
+#       NON APPLICABILE. Lo sha1 genera un validatore di cache HTTP, non una
+#       primitiva di sicurezza: nessuna proprieta' di integrita' o
+#       autenticazione dipende da esso. Un ETag risponde solo alla domanda
+#       "il contenuto e' cambiato?" per un 304 Not Modified; chi ne forzasse
+#       una collisione otterrebbe unicamente una risposta di cache impropria.
+#
+#       etag@1.8.1 e' l'ultima e unica versione pubblicata, stabile da anni;
+#       Express 5 dipende ancora da ^1.8.1. Non esiste nulla da aggiornare e
+#       non esiste alternativa drop-in. Disattivare gli ETag a runtime
+#       (app.set('etag', false)) non chiuderebbe il finding, perche' Snyk Code
+#       segnala i file presenti su disco senza analisi di raggiungibilita' —
+#       come dimostrato dai 54 findings originali su cluster/test/ e
+#       cluster/examples/, file mai eseguiti.
+
+exclude:
+  global:
+    - node_modules/**
+    - '**/node_modules/**'
+
+# ---------------------------------------------------------------------------
+# [7] RISCHIO ACCETTATO — codice di prima parte
+# ---------------------------------------------------------------------------
+#
+#       webcb/ws.js:344 — const server = http.createServer(app);
+#       Regola: javascript/HttpToHttps (warning)
+#
+#       SCELTA ARCHITETTURALE VOLUTA, non un difetto implementativo.
+#       Il servizio e' esposto su Internet tramite Akamai, con terminazione
+#       TLS sull'Application Load Balancer AWS. Il listener applicativo in
+#       chiaro (porta 8080) opera esclusivamente sull'hop interno alla VPC,
+#       tra ALB e istanza.
+#
+#       La regola presuppone un servizio esposto direttamente su Internet:
+#       e' quel presupposto a non valere in questa architettura. Sostituire
+#       con https.createServer comporterebbe doppia terminazione TLS dietro un
+#       ALB che gia' la esegue, aggiungendo gestione e rotazione di certificati
+#       sul container senza alcun beneficio di sicurezza.
+#
+#       CONTROLLO COMPENSATIVO DA VERIFICARE PERIODICAMENTE:
+#       il security group dell'istanza deve accettare traffico sulla porta
+#       8080 esclusivamente dal security group dell'ALB, così che il listener
+#       in chiaro non sia raggiungibile ne' da Internet ne' lateralmente
+#       dalla VPC. E' questo controllo a rendere solida l'accettazione del
+#       rischio: se decade, il finding va riaperto.
+#
+#       ATTENZIONE — l'ignore puntuale di un finding Snyk Code su codice di
+#       prima parte NON si configura tramite questo file: la sezione `ignore`
+#       del policy file governa le vulnerabilita' Snyk Open Source (SCA),
+#       identificate da ID tipo SNYK-JS-*, non le regole SAST.
+#       Per chiudere questo finding usare una delle due strade:
+#         a) ignore dalla UI Snyk (consigliata: prevede scadenza e workflow di
+#            approvazione, requisito tipico delle policy enterprise);
+#         b) soppressione inline nel sorgente, con commento `deepcode ignore`
+#            immediatamente sopra la riga 344 di webcb/ws.js.
+#       Verificare la sintassi esatta di (b) sulla documentazione della
+#       versione di Snyk Code in uso prima di adottarla.
