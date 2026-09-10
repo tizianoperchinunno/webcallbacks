@@ -341,6 +341,7 @@ const allowedOrigins = ['https://webcb-stage.costacrociere.it','https://webcb.co
 		res.end("Not found");
 	});
 
+  // deepcode ignore HttpToHttps: TLS terminato a monte su Akamai + ALB; il listener in chiaro sulla porta 8080 opera solo sull'hop interno alla VPC, raggiungibile esclusivamente dal security group dell'ALB.
   const server = http.createServer(app);
 
   server.listen(8080, () => {
