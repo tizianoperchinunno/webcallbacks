@@ -1,10 +1,26 @@
 # Snyk policy file — progetto WebCallback (webcb + costastats)
 #
 # Perimetro: questo file governa lo scan SAST (Snyk Code) eseguito dalla radice
-# /webcallback, come da report report-2026-07-31T07-28-21.json (73 findings).
+# /webcallback, come da report report-2026-07-31T07-28-21.json (73 findings:
+# 3 HIGH, 22 MEDIUM, 48 LOW).
 #
-# Stato remediation al 31/07/2026: 67 findings su 73 risolti con fix di codice
-# e rimozione di dipendenze obsolete. I 7 residui sono documentati qui sotto.
+# Stato verificato al 10/09/2026 (riletto codice per codice, non solo i
+# commenti di questo file): tutti i 73 findings sono chiusi. Scomposizione
+# onesta di come sono chiusi, perche' non e' tutto un "fix":
+#
+#   - 66 findings ricadono sotto node_modules/** (3 HIGH, 20 MEDIUM,
+#     43 LOW) e sono chiusi dall'esclusione di perimetro qui sotto — NON da
+#     un fix di codice o una rimozione di dipendenza. E' una scelta di scope
+#     dello scan SAST, legittima perche' quelle dipendenze restano coperte
+#     da `snyk test` (SCA), che oggi non segnala alcuna CVE su di esse.
+#     Fa eccezione cookie-signature, per cui e' stato fatto ANCHE un pin di
+#     versione (vedi overrides in webcb/package.json) oltre all'esclusione.
+#   - 7 findings sono su codice di prima parte e sono documentati uno per uno
+#     nelle sezioni [1]-[8] qui sotto: 2 sono fix di codice applicati
+#     (DisablePoweredBy, cookie-signature), 1 e' un rischio accettato con
+#     soppressione inline motivata (HttpToHttps su ws.js:344), 4 sono stati
+#     verificati come gia' non sfruttabili senza modificare nulla (DOMXSS su
+#     test.html, Improper Type Validation su ws.js).
 #
 # NOTA IMPORTANTE — questo file NON riduce la copertura sulle dipendenze.
 # L'esclusione di node_modules riguarda esclusivamente Snyk Code (SAST), che e'
@@ -18,8 +34,13 @@ version: v1.25.0
 # ESCLUSIONI DI PERIMETRO
 # ---------------------------------------------------------------------------
 #
-# Chiude 6 dei 7 findings residui, tutti in codice di terze parti non
-# modificabile. Motivazioni per pacchetto:
+# La direttiva `exclude` sotto chiude da sola i 66 findings in node_modules
+# (compresi i 41 su cluster/test/** e i 13 su cluster/examples/** visti nel
+# report originale). Le sezioni [1]-[6] qui sotto motivano nel dettaglio solo
+# i casi di terze parti piu' significativi (quelli su codice non ovviamente
+# morto, o su una regola di sicurezza piu' seria di un test/esempio mai
+# eseguito) — non ogni singolo file escluso, per non duplicare inutilmente
+# quanto gia' spiegato dalla policy di esclusione stessa.
 #
 # [1-4] winston — {lib,dist}/winston/transports/http.js:242 e :267
 #       Regola: javascript/HttpToHttps (warning) — 4 occorrenze
@@ -111,3 +132,35 @@ exclude:
 #       scadenza e workflow di approvazione, tipico delle policy enterprise),
 #       il commento inline andra' rimosso per evitare una doppia soppressione
 #       dello stesso finding.
+
+# ---------------------------------------------------------------------------
+# [8] LOW su codice di prima parte — verificati come gia' non sfruttabili
+# ---------------------------------------------------------------------------
+#
+#       webcb/public/test.html:35
+#       Regola: javascript/DOMXSS (note)
+#
+#       NON RIPRODUCIBILE. Il messaggio Snyk descrive un flusso verso
+#       innerHTML, ma il sink reale e' `document.getElementById("cbout")
+#       .value = JSON.stringify(result)`: si scrive nella proprieta' .value
+#       di una <textarea>, mai in innerHTML. Il browser non interpreta .value
+#       come HTML, quindi non c'e' esecuzione di codice possibile qui,
+#       indipendentemente dal contenuto della risposta.
+#
+#       Nota non legata al finding: test.html e' una pagina di debug servita
+#       pubblicamente da express.static in produzione. Da valutare se
+#       escluderla dal bundle statico, ma e' una questione di esposizione,
+#       non di XSS.
+#
+#       webcb/ws.js — uso di req.body.Country.length e
+#       req.body.PhoneNumber.length
+#       Regola: javascript/HTTPSourceWithUncheckedType (note) — 4 occorrenze
+#       (2 posizioni, ciascuna riportata due volte dal tool)
+#
+#       GIA' MITIGATO. Country e PhoneNumber sono entrambi in
+#       REQUIRED_FIELDS e vengono validati da isFilledString
+#       (typeof v === 'string' && v.trim() !== '') PRIMA di arrivare alle
+#       righe che leggono .length: un body come {"Country":{"length":5}}
+#       viene respinto con "KO|missing params" e non raggiunge mai .length.
+#       Nessuna modifica necessaria; un controllo di tipo inline aggiuntivo
+#       immediatamente prima di ogni uso di .length sarebbe ridondante.
