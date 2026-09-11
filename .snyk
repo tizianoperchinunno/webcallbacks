@@ -152,7 +152,7 @@ exclude:
 #       nessuno se ne accorga.
 
 # ---------------------------------------------------------------------------
-# [8] LOW su codice di prima parte — verificati come gia' non sfruttabili
+# [8] LOW su codice di prima parte
 # ---------------------------------------------------------------------------
 #
 #       webcb/public/test.html:35
@@ -170,18 +170,31 @@ exclude:
 #       escluderla dal bundle statico, ma e' una questione di esposizione,
 #       non di XSS.
 #
-#       webcb/ws.js — uso di req.body.Country.length e
+#       webcb/ws.js:172 e :176 — uso di req.body.Country.length e
 #       req.body.PhoneNumber.length
 #       Regola: javascript/HTTPSourceWithUncheckedType (note) — 4 occorrenze
 #       (2 posizioni, ciascuna riportata due volte dal tool)
 #
-#       GIA' MITIGATO. Country e PhoneNumber sono entrambi in
-#       REQUIRED_FIELDS e vengono validati da isFilledString
-#       (typeof v === 'string' && v.trim() !== '') PRIMA di arrivare alle
-#       righe che leggono .length: un body come {"Country":{"length":5}}
-#       viene respinto con "KO|missing params" e non raggiunge mai .length.
-#       Nessuna modifica necessaria; un controllo di tipo inline aggiuntivo
-#       immediatamente prima di ogni uso di .length sarebbe ridondante.
+#       Analizzato inizialmente come GIA' MITIGATO (11/09/2026): Country e
+#       PhoneNumber sono entrambi in REQUIRED_FIELDS e vengono validati da
+#       isFilledString (typeof v === 'string' && v.trim() !== '') PRIMA di
+#       arrivare alle righe che leggono .length — un body come
+#       {"Country":{"length":5}} viene respinto con "KO|missing params" e
+#       non raggiunge mai .length. Logicamente corretto, ma Snyk Code ha
+#       continuato a segnalare il finding: l'analisi statica non fa
+#       ragionamento cross-condizione attraverso REQUIRED_FIELDS.every(...)
+#       e isFilledString(), quindi non "vede" la garanzia di tipo.
+#
+#       FIX APPLICATO (11/09/2026, poco dopo): aggiunto un controllo
+#       `typeof req.body.Country !== 'string' ||` e
+#       `typeof req.body.PhoneNumber !== 'string' ||` direttamente davanti
+#       a ciascun uso di .length (short-circuit, quindi .length non viene
+#       mai valutato se il tipo e' sbagliato). E' un controllo ridondante
+#       rispetto a quello che gia' passa da REQUIRED_FIELDS — il
+#       comportamento per input legittimi e per l'unico path davvero
+#       raggiungibile non cambia (verificato con una simulazione della
+#       logica di validazione) — ma e' locale e diretto, nella forma che
+#       lo scanner riconosce come guardia di tipo.
 
 # ---------------------------------------------------------------------------
 # [9] SCA (Snyk Open Source) — qs, dipendenza transitiva di express

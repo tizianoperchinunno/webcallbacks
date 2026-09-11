@@ -169,11 +169,11 @@ const allowedOrigins = ['https://webcb-stage.costacrociere.it','https://webcb.co
 		res.json({"status":"KO|Type"});logger.info(UUID + "-> KO|Type");
 		return;
 	}
-	if (req.body.Country.length==0 || req.body.Country.length>8){
+	if (typeof req.body.Country !== 'string' || req.body.Country.length==0 || req.body.Country.length>8){
 		res.json({"status":"KO|Country"});logger.info(UUID + "-> KO|Country");
 		return;
 	}
-	if (req.body.PhoneNumber.length<7 || req.body.PhoneNumber.length>20){
+	if (typeof req.body.PhoneNumber !== 'string' || req.body.PhoneNumber.length<7 || req.body.PhoneNumber.length>20){
 		res.json({"status":"KO|PhoneNumber"});logger.info(UUID + "-> KO|PhoneNumber");
 		return;
 	}
