@@ -18,8 +18,9 @@
     "winston": "^3.13.0",
     "winston-daily-rotate-file": "^5.0.0"
   },
-  "overridesNote": "express 4 pinna cookie-signature a 1.0.6, che confronta le firme con sha1; 1.2.x usa crypto.timingSafeEqual. API identica (sign/unsign).",
+  "overridesNote": "express 4 pinna cookie-signature a 1.0.6, che confronta le firme con sha1; 1.2.x usa crypto.timingSafeEqual. API identica (sign/unsign). express pinna anche qs a ~6.15.x, vulnerabile a SNYK-JS-QS-19432017 (allocazione risorse senza limiti in parseArrayValue, GHSA-x5fp-wj9c-mxmx) e a un uncaught exception in isBuffer (GHSA-4mjr-xmp4-gh2g); 6.16.0 corregge entrambe senza cambi di API.",
   "overrides": {
-    "cookie-signature": "^1.2.2"
+    "cookie-signature": "^1.2.2",
+    "qs": "^6.16.0"
   }
 }
