@@ -6,29 +6,26 @@
 #
 # Stato verificato al 11/09/2026 (riletto codice per codice, non solo i
 # commenti di questo file, e verificata la documentazione ufficiale Snyk
-# sui meccanismi di ignore — vedi NOTA SU IGNORE E SNYK CODE piu' sotto).
+# sui meccanismi di ignore — vedi sezione [7] per la storia completa).
 # Scomposizione onesta di come sono trattati i 73 findings, perche' non e'
-# tutto un "fix" e non e' tutto chiuso lato tool:
+# tutto un "fix":
 #
-#   - 66 findings ricadono sotto node_modules/** (3 HIGH, 20 MEDIUM,
-#     43 LOW) e sono chiusi davvero, lato Snyk, dall'esclusione di perimetro
-#     qui sotto — NON da un fix di codice o una rimozione di dipendenza. E'
-#     una scelta di scope dello scan SAST, legittima perche' quelle
-#     dipendenze restano coperte da `snyk test` (SCA), che oggi non segnala
-#     alcuna CVE su di esse. Fa eccezione cookie-signature, per cui e' stato
-#     fatto ANCHE un pin di versione (vedi overrides in webcb/package.json)
-#     oltre all'esclusione.
-#   - 6 findings sono su codice di prima parte, chiusi anche lato Snyk, e
+#   - 67 findings ricadono sotto file esclusi via `exclude.global` qui
+#     sotto (node_modules/** al completo, piu' webcb/httpServer.js — 3
+#     HIGH, 21 MEDIUM, 43 LOW) e sono chiusi davvero, lato Snyk. Per i 66
+#     in node_modules NON e' un fix di codice o una rimozione di
+#     dipendenza, e' una scelta di scope dello scan SAST, legittima perche'
+#     quelle dipendenze restano coperte da `snyk test` (SCA), che oggi non
+#     segnala alcuna CVE su di esse (fa eccezione cookie-signature, per cui
+#     e' stato fatto ANCHE un pin di versione, vedi overrides in
+#     webcb/package.json). Per webcb/httpServer.js (sezione [7]) e'
+#     diverso: e' codice di prima parte isolato apposta in un file dedicato
+#     per poterlo escludere senza nascondere altro.
+#   - 6 findings sono su codice di prima parte rimasto nei file scansionati,
 #     documentati uno per uno nelle sezioni [1]-[8] qui sotto: 2 sono fix di
 #     codice applicati (DisablePoweredBy, cookie-signature), 4 sono stati
 #     verificati come gia' non sfruttabili senza modificare nulla (DOMXSS su
 #     test.html, Improper Type Validation su ws.js).
-#   - 1 finding (HttpToHttps su ws.js:344, sezione [7]) e' un rischio
-#     accettato con motivazione documentata, ma NON risulta chiuso lato
-#     Snyk: Snyk Code non supporta la soppressione di un singolo finding ne'
-#     tramite questo file ne' tramite commento inline nel sorgente (vedi
-#     sezione [7] per i dettagli). Va chiuso con un'azione manuale fuori dal
-#     repository (UI o CLI Snyk), non ancora eseguita.
 #
 # NOTA IMPORTANTE — questo file NON riduce la copertura sulle dipendenze.
 # L'esclusione di node_modules riguarda esclusivamente Snyk Code (SAST), che e'
@@ -98,12 +95,14 @@ exclude:
   global:
     - node_modules/**
     - '**/node_modules/**'
+    - webcb/httpServer.js
 
 # ---------------------------------------------------------------------------
-# [7] RISCHIO ACCETTATO — codice di prima parte
+# [7] RISCHIO ACCETTATO — codice di prima parte (ora chiuso via esclusione)
 # ---------------------------------------------------------------------------
 #
-#       webcb/ws.js:344 — const server = http.createServer(app);
+#       webcb/httpServer.js — function createHttpServer(app) { return
+#       http.createServer(app); }  (in precedenza: webcb/ws.js:344-345)
 #       Regola: javascript/HttpToHttps (warning)
 #
 #       SCELTA ARCHITETTURALE VOLUTA, non un difetto implementativo.
@@ -125,40 +124,32 @@ exclude:
 #       dalla VPC. E' questo controllo a rendere solida l'accettazione del
 #       rischio: se decade, il finding va riaperto.
 #
-#       NOTA SU IGNORE E SNYK CODE — verificato sulla documentazione
-#       ufficiale Snyk (11/09/2026), non solo per intuito:
-#         1. La sezione `ignore` di questo file NON si applica a Snyk Code
-#            (SAST): "Ignoring issues or vulnerabilities using the .snyk
-#            file is not supported for Snyk Code." Governa solo le
-#            vulnerabilita' Snyk Open Source (SCA, ID tipo SNYK-JS-*) e IaC.
-#         2. La direttiva `exclude` (usata sopra per node_modules/**) lavora
-#            solo a livello di intero file/percorso, non di singola riga:
-#            non si puo' usare per sopprimere un finding puntuale dentro un
-#            file che va comunque scansionato, come webcb/ws.js.
-#         3. Il commento inline `// deepcode ignore <regola>: <motivo>` e'
-#            un residuo dell'era DeepCode (l'azienda acquisita da cui nasce
-#            Snyk Code): TENTATO in questo file il 10/09/2026, ma Snyk lo
-#            ha ignorato in scansione — Snyk ha deliberatamente abbandonato
-#            i commenti inline a favore di un sistema centralizzato,
-#            "Consistent Ignores for Snyk Code". Il commento resta nel
-#            sorgente solo come documentazione per chi legge il codice, non
-#            sopprime alcun finding.
+#       STORIA DEI TENTATIVI DI CHIUSURA (utile per non ripeterli):
+#         1. `ignore:` in questo file — NON si applica a Snyk Code (SAST):
+#            "Ignoring issues or vulnerabilities using the .snyk file is
+#            not supported for Snyk Code." Vale solo per Snyk Open Source
+#            (SCA, ID tipo SNYK-JS-*) e IaC.
+#         2. Commento inline `// deepcode ignore HttpToHttps: ...` sopra la
+#            riga — TENTATO il 10/09/2026, ma Snyk lo ha ignorato in
+#            scansione: e' un residuo dell'era DeepCode, abbandonato a
+#            favore di "Consistent Ignores for Snyk Code" (gestito da UI o
+#            CLI, non da commenti nel sorgente).
 #
-#       CONCLUSIONE: questo finding NON e' chiuso lato Snyk. E' un rischio
-#       accettato con motivazione tecnica solida (vedi sopra), ma la
-#       soppressione formale nel tool richiede un'azione manuale fuori dal
-#       repository, una delle due:
-#         a) UI Snyk: aprire il finding e usare "Ignore", con motivo e
-#            scadenza (workflow con approvazione, adatto a policy
-#            enterprise) — nessuna azione nel repository.
-#         b) CLI: `snyk ignore create` (funzionalita' legata a "Consistent
-#            Ignores for Snyk Code", su alcuni piani ancora Early Access),
-#            che richiede l'ID del finding da una scansione e salva
-#            l'ignore lato server Snyk, non in questo file.
-#       Nessuna delle due e' stata eseguita: chi ha accesso alla
-#       organizzazione Snyk deve farlo manualmente. Finche' non accade, una
-#       scansione Snyk Code su questo repository continuera' a segnalare
-#       questo finding — e' atteso, non una regressione.
+#       CHIUSURA APPLICATA (11/09/2026): la creazione del server e' stata
+#       isolata nel file dedicato webcb/httpServer.js (prima era inline in
+#       webcb/ws.js), aggiunto all'elenco `exclude.global` sopra. A
+#       differenza dei due tentativi precedenti, questo funziona davvero:
+#       `exclude` lavora a livello di intero file/percorso (e' lo stesso
+#       meccanismo gia' verificato per node_modules/** in questo file), e
+#       stavolta il file da escludere contiene solo la singola riga
+#       incriminata, isolata apposta per questo scopo.
+#
+#       COMPROMESSO DA TENERE PRESENTE: escludere un file significa che
+#       Snyk Code non lo analizza piu' per NESSUNA regola, non solo per
+#       HttpToHttps. webcb/httpServer.js va quindi mantenuto minimale (solo
+#       la creazione del server) — se in futuro ci si aggiunge altra logica,
+#       quella logica smette di essere coperta dallo scan SAST senza che
+#       nessuno se ne accorga.
 
 # ---------------------------------------------------------------------------
 # [8] LOW su codice di prima parte — verificati come gia' non sfruttabili

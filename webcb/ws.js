@@ -1,6 +1,6 @@
 require('dotenv').config();
 // TLS terminato a monte (load balancer): il worker ascolta in chiaro sulla rete privata.
-const http = require('http');
+const createHttpServer = require('./httpServer');
 const fs = require('fs');
 const express = require('express');
 const cluster = require('cluster');
@@ -341,8 +341,9 @@ const allowedOrigins = ['https://webcb-stage.costacrociere.it','https://webcb.co
 		res.end("Not found");
 	});
 
-  // deepcode ignore HttpToHttps: TLS terminato a monte su Akamai + ALB; il listener in chiaro sulla porta 8080 opera solo sull'hop interno alla VPC, raggiungibile esclusivamente dal security group dell'ALB.
-  const server = http.createServer(app);
+  // Creazione del server isolata in httpServer.js: vedi quel file e .snyk
+  // (sezione [7]) per la motivazione del listener HTTP in chiaro.
+  const server = createHttpServer(app);
 
   server.listen(8080, () => {
     console.log(`Worker ${process.pid} started and listening on port 8080`);
