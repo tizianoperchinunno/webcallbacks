@@ -191,3 +191,47 @@ exclude:
 #       viene respinto con "KO|missing params" e non raggiunge mai .length.
 #       Nessuna modifica necessaria; un controllo di tipo inline aggiuntivo
 #       immediatamente prima di ogni uso di .length sarebbe ridondante.
+
+# ---------------------------------------------------------------------------
+# [9] SCA (Snyk Open Source) — qs, dipendenza transitiva di express
+# ---------------------------------------------------------------------------
+#
+#       NOTA DI PERIMETRO: a differenza delle sezioni [1]-[8], questa non
+#       riguarda il report SAST (Snyk Code) del 31/07/2026 su cui e'
+#       costruito il resto di questo file, ma due segnalazioni SCA
+#       (`snyk test`) su webcb/node_modules/qs@6.15.3, introdotto tramite
+#       express@4.22.2. Documentata qui solo per tenere in un unico posto
+#       la storia delle remediation di dipendenza del progetto.
+#
+#       - SNYK-JS-QS-19432017 — Allocation of Resources Without Limits or
+#         Throttling (GHSA-x5fp-wj9c-mxmx): in parseArrayValue() il
+#         comma-parsing su chiavi con parentesi quadre (es. "a[]=1,2,3,4")
+#         bypassa i controlli arrayLimit/throwOnLimitExceeded.
+#       - Uncaught Exception in isBuffer() (GHSA-4mjr-xmp4-gh2g): chiama
+#         obj.constructor.isBuffer(obj) senza verificarne la callability,
+#         raggiungibile da stringify().
+#
+#       VERIFICATO NON SFRUTTABILE nel codice attuale, ma solo per assenza
+#       di uso, non per una protezione strutturale:
+#       - webcb/ws.js non legge mai req.query (grep negativo su tutto il
+#         file): il getter di Express per req.query e' lazy, quindi
+#         qs.parse() non viene mai invocato sulle richieste in arrivo.
+#       - L'unico body parser montato e' express.json({limit:'10kb'});
+#         express.urlencoded() (l'altro punto d'ingresso di qs) non e' mai
+#         usato.
+#       - Il secondo finding richiede inoltre una chiamata esplicita a
+#         qs.stringify() su un oggetto con allowPrototypes/plainObjects:
+#         il progetto non ha 'qs' tra le dipendenze dirette e non lo
+#         richiede mai esplicitamente.
+#       Questa non-sfruttabilita' e' fragile: basterebbe introdurre in
+#       futuro un uso di req.query o di express.urlencoded() per riaprire
+#       il rischio, quindi si e' comunque proceduto al fix.
+#
+#       FIX APPLICATO (11/09/2026): aggiunta la entry `"qs": "^6.16.0"` al
+#       blocco `overrides` di webcb/package.json (stesso meccanismo gia'
+#       usato per cookie-signature). Validato con
+#       `npm install --package-lock-only` in una copia di prova: qs si
+#       deduplica correttamente a un'unica 6.16.0 in tutto l'albero delle
+#       dipendenze (sia la copia pinnata direttamente da express sia quella
+#       richiesta da body-parser), senza conflitti di risoluzione. 6.16.0
+#       e' una release di patch, nessun cambio di API atteso.
