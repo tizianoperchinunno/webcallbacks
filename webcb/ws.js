@@ -593,6 +593,26 @@ function resultAction(address,minutes,stats){
 		{
 			return false;
 		}
+	}else if ((address.indexOf(".eu/pldeals")>0 || address.indexOf(".eu/plcruises/")>0 || address.indexOf(".eu/plcruises.html")>0 || address.indexOf(".eu/plreservation")>0 || address.indexOf(".eu/plsummary")>0 || address.indexOf(".eu/plconfirmation.html")>0 || address.indexOf(".eu/plcheckout.")>0)){
+		let coda="PL_CBWB2C";
+
+		if (stats.queues[coda]!=null)
+		{
+			let oOnQueueUsers=stats.queues[coda].oOnQueueUsers;
+			let oActiveUsers=stats.queues[coda].oActiveUsers;
+			console.log(coda + " -> oActiveUsers:" + oActiveUsers + " - oOnQueueUsers:" + oOnQueueUsers);
+			if ((minutes>=600 && minutes<=719 && oOnQueueUsers>=15) || (minutes>=720 && minutes<=779 && oOnQueueUsers>=25) || (minutes>=900 && minutes<=1079 && oOnQueueUsers>=15)){
+				return true;
+			}
+			else
+			{
+				return false;
+			}
+		}
+		else
+		{
+			return false;
+		}
 	}else if ((address.indexOf(".de/angebote")>0 || address.indexOf(".de/cruises/")>0 || address.indexOf(".de/cruises.html")>0 || address.indexOf(".de/reservation")>0 || address.indexOf(".de/summary")>0 || address.indexOf(".de/confirmation.html")>0 || address.indexOf(".de/checkout.")>0)){
 		let coda="D_CBWB2C";
 		
