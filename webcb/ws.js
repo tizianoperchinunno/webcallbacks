@@ -278,9 +278,11 @@ const allowedOrigins = ['https://webcb-stage.costacrociere.it','https://webcb.co
 		res.end("//location error");
 		return;
 	}	
-    let minutes = (new Date()).getMinutes();
-	let hours=(new Date()).getHours();
-	let mins=(1440  + minutes*1+hours*60 - queryData.tsoff*1) % 1440 ;
+	// tsoff e' getTimezoneOffset() del browser (UTC - ora locale): va applicato
+	// all'ora UTC, non a quella locale del server, altrimenti le fasce orarie di
+	// resultAction slittano se il server non gira in UTC
+	const now = new Date();
+	let mins=(1440 + now.getUTCMinutes() + now.getUTCHours()*60 - queryData.tsoff*1) % 1440 ;
 
 	res.writeHead(200, { 'Content-Type': 'text/javascript' });
     

@@ -155,7 +155,8 @@ exclude:
 # [8] LOW su codice di prima parte
 # ---------------------------------------------------------------------------
 #
-#       webcb/public/test.html:35
+#       webcb/public/test.html:53 (riga 35 nel report del 31/07/2026, spostata
+#       quando e' stata aggiunta la sezione di test delle regole /rule)
 #       Regola: javascript/DOMXSS (note)
 #
 #       NON RIPRODUCIBILE. Il messaggio Snyk descrive un flusso verso
@@ -164,6 +165,10 @@ exclude:
 #       di una <textarea>, mai in innerHTML. Il browser non interpreta .value
 #       come HTML, quindi non c'e' esecuzione di codice possibile qui,
 #       indipendentemente dal contenuto della risposta.
+#
+#       La sezione di test delle regole /rule scrive a video solo tramite
+#       .textContent, e i parametri letti da location.search finiscono
+#       nell'URL di /rule solo dopo encodeURIComponent.
 #
 #       Nota non legata al finding: test.html e' una pagina di debug servita
 #       pubblicamente da express.static in produzione. Da valutare se
