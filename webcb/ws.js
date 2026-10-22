@@ -593,7 +593,7 @@ function resultAction(address,minutes,stats){
 		{
 			return false;
 		}
-	}else if ((address.indexOf(".eu/pldeals")>0 || address.indexOf(".eu/plcruises/")>0 || address.indexOf(".eu/plcruises.html")>0 || address.indexOf(".eu/plreservation")>0 || address.indexOf(".eu/plsummary")>0 || address.indexOf(".eu/plconfirmation.html")>0 || address.indexOf(".eu/plcheckout.")>0)){
+	}else if ((address.indexOf(".eu/pl/deals")>0 || address.indexOf(".eu/pl/cruises/")>0 || address.indexOf(".eu/pl/cruises.html")>0 || address.indexOf(".eu/pl/reservation")>0 || address.indexOf(".eu/pl/summary")>0 || address.indexOf(".eu/pl/confirmation.html")>0 || address.indexOf(".eu/pl/checkout.")>0)){
 		let coda="PL_CBWB2C";
 
 		if (stats.queues[coda]!=null)
