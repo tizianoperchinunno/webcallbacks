@@ -51,6 +51,12 @@ function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// Corpo della observations/query: solo i campi previsti dall'API Genesys.
+// La mappa id->nome "queues" serve solo a noi e resta nella cache.
+function observationQueryBody(filterParam) {
+	return JSON.stringify({ filter: filterParam.filter, metrics: filterParam.metrics });
+}
+
 async function main(){
     try {
 		
@@ -131,20 +137,25 @@ async function main(){
 		let filterParam={}
 		
 		
-		if (bearerToken!="" && sFilterParam!="") 
+		if (bearerToken!="" && sFilterParam!="")
 		{
+			filterParam=JSON.parse(sFilterParam);
 			response = await fetch('https://api.mypurecloud.ie/api/v2/analytics/queues/observations/query', {
 				 method: 'POST',
-					body: sFilterParam,
+					body: observationQueryBody(filterParam),
 					headers: { 'Content-Type': 'application/json','Authorization':'Bearer '+ bearerToken}
-			});		
+			});
 			data = await response.json();
-			filterParam=JSON.parse(sFilterParam);
-			logger.info("Statistiche recuperate da API");
+			if (response.status==200){
+				logger.info("Statistiche recuperate da API");
+			}else{
+				logger.info("observations/query in errore (" + response.status + "): " + JSON.stringify(data));
+			}
 		}
 
-		
-		if (bearerToken=="" || sFilterParam=="" || response.status==401){
+		// Qualsiasi errore (non solo 401) rigenera token e filtro: prima un 400/403/429
+		// mandava in crash lo script e le stats in cache restavano vecchie per sempre.
+		if (bearerToken=="" || sFilterParam=="" || response.status!=200){
 			logger.info("autenticazione non valida");
 			response = await fetch('https://login.mypurecloud.ie/oauth/token', {
 				 method: 'POST',
@@ -301,42 +312,47 @@ async function main(){
 			
 			response = await fetch('https://api.mypurecloud.ie/api/v2/analytics/queues/observations/query', {
 				 method: 'POST',
-					body: sFilterParam,
+					body: observationQueryBody(filterParam),
 					headers: { 'Content-Type': 'application/json','Authorization':'Bearer '+ bearerToken}
-			});		
+			});
 			data = await response.json();
 			//console.log(JSON.stringify(data));
-			logger.info("statistiche recuperate");			
-			
-			
-			
+			if (response.status!=200){
+				throw new Error("observations/query in errore (" + response.status + "): " + JSON.stringify(data));
+			}
+			logger.info("statistiche recuperate");
+
+
+
 		}
 
 
-			
-			
-		for (c=0;c<data.results.length;c++){
-			//console.log(filterParam.queues[data.results[c].group.queueId])
-			stats.queues[filterParam.queues[data.results[c].group.queueId]]={}
-			let oOnQueueUsers=0;
-			let oActiveUsers=0;
-			for (h=0;h<data.results[c].data.length;h++){
-				if (data.results[c].data[h].metric=='oOnQueueUsers')
-				{
-					oOnQueueUsers+=data.results[c].data[h].stats.count
-				}	
-				if (data.results[c].data[h].metric=='oActiveUsers')
-				{
-					oActiveUsers+=data.results[c].data[h].stats.count
-				}	
+
+		// Genesys omette "results" e "data" quando non ci sono osservazioni, e una
+		// stessa coda puo' comparire in piu' gruppi (es. per mediaType): i conteggi
+		// vanno sommati, non sovrascritti, altrimenti un gruppo vuoto azzera la coda.
+		const results = Array.isArray(data.results) ? data.results : [];
+		for (const result of results){
+			const queueName = filterParam.queues[result.group && result.group.queueId];
+			if (queueName == null) continue;
+			if (stats.queues[queueName] == null){
+				stats.queues[queueName] = { oOnQueueUsers: 0, oActiveUsers: 0 };
 			}
-			stats.queues[filterParam.queues[data.results[c].group.queueId]]["oOnQueueUsers"]=oOnQueueUsers;
-			stats.queues[filterParam.queues[data.results[c].group.queueId]]["oActiveUsers"]=oActiveUsers;
-			
+			for (const d of (result.data || [])){
+				const count = (d.stats && d.stats.count) || 0;
+				if (d.metric=='oOnQueueUsers')
+				{
+					stats.queues[queueName].oOnQueueUsers+=count;
+				}
+				if (d.metric=='oActiveUsers')
+				{
+					stats.queues[queueName].oActiveUsers+=count;
+				}
+			}
 		}
 		stats.timestamp=new Date();
 		writeToCache('stats', JSON.stringify(stats));
-		logger.info("statistiche salvate in cache");
+		logger.info("statistiche salvate in cache (" + Object.keys(stats.queues).length + " code)");
 		//console.log(JSON.stringify(stats));
 
 
@@ -368,9 +384,13 @@ async function main(){
 					headers: { 'Content-Type': 'application/json','Authorization':'Bearer '+ bearerToken}
 			});		
 			conversations = await response.json();
+			if (response.status!=200){
+				throw new Error("conversations/details/query in errore (" + response.status + "): " + JSON.stringify(conversations));
+			}
 
 			//.filter(conve=>conve.conversationId=='cc313aa7-7060-4d6a-953e-5d1e7b9cf5cb')
-			conteggi=conteggi.concat(conversations.conversations.filter(conve=>Slots.SlotQueues[filterParam.queues[conve.participants[0].sessions[0].segments[0].queueId]]!=null).filter(conv => (conv.participants[0].purpose=="customer" && conv.participants[0].participantName.indexOf("Default")<0) || (conv.participants[1].purpose=="customer" && conv.participants[1].participantName.indexOf("Default")<0) )
+			// senza callback pendenti Genesys risponde solo {"totalHits":0}, senza "conversations"
+			conteggi=conteggi.concat((conversations.conversations || []).filter(conve=>Slots.SlotQueues[filterParam.queues[conve.participants[0].sessions[0].segments[0].queueId]]!=null).filter(conv => (conv.participants[0].purpose=="customer" && conv.participants[0].participantName.indexOf("Default")<0) || (conv.participants[1].purpose=="customer" && conv.participants[1].participantName.indexOf("Default")<0) )
 			.map(item => ({
   				//queueName: filterParam.queues[item.participants[0].sessions[0].segments[0].queueId],
   				slotName: Slots.SlotQueues[filterParam.queues[item.participants[0].sessions[0].segments[0].queueId]],
@@ -420,7 +440,8 @@ async function main(){
 
 
     } catch (error) {
-        console.error('Errore durante la chiamata POST:', error);
+		// tramite logger, cosi' l'errore finisce anche nel file di log e non solo su stdout
+		logger.error('Errore durante l\'estrazione delle statistiche: ' + ((error && error.stack) || error));
     }
 
 	redis.quit();
