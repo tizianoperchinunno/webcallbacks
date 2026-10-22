@@ -553,7 +553,7 @@ function resultAction(address,minutes,stats){
 		{
 			return false;
 		}
-	}else if ((address.indexOf(".fi/deals")>0 || address.indexOf(".fi/cruises/")>0 || address.indexOf(".fi/cruises.html")>0 || address.indexOf(".fi/reservation")>0 || address.indexOf("fi/summary")>0 || address.indexOf(".fi/confirmation.html")>0 || address.indexOf(".fi/checkout.")>0)){
+	}else if ((address.indexOf(".fi/deals")>0 || address.indexOf(".fi/cruises/")>0 || address.indexOf(".fi/cruises.html")>0 || address.indexOf(".fi/reservation")>0 || address.indexOf(".fi/summary")>0 || address.indexOf(".fi/confirmation.html")>0 || address.indexOf(".fi/checkout.")>0)){
 		let coda="SK_CBWB2C";
 		
 		if (stats.queues[coda]!=null)
@@ -568,6 +568,26 @@ function resultAction(address,minutes,stats){
 			{
 				return false;
 			}			
+		}
+		else
+		{
+			return false;
+		}
+	}else if ((address.indexOf(".eu/deals")>0 || address.indexOf(".eu/cruises/")>0 || address.indexOf(".eu/cruises.html")>0 || address.indexOf(".eu/reservation")>0 || address.indexOf(".eu/summary")>0 || address.indexOf(".eu/confirmation.html")>0 || address.indexOf(".eu/checkout.")>0)){
+		let coda="NM_CBWB2C";
+
+		if (stats.queues[coda]!=null)
+		{
+			let oOnQueueUsers=stats.queues[coda].oOnQueueUsers;
+			let oActiveUsers=stats.queues[coda].oActiveUsers;
+			console.log(coda + " -> oActiveUsers:" + oActiveUsers + " - oOnQueueUsers:" + oOnQueueUsers);
+			if ((minutes>=600 && minutes<=719 && oOnQueueUsers>=15) || (minutes>=720 && minutes<=779 && oOnQueueUsers>=25) || (minutes>=900 && minutes<=1079 && oOnQueueUsers>=15)){
+				return true;
+			}
+			else
+			{
+				return false;
+			}
 		}
 		else
 		{
