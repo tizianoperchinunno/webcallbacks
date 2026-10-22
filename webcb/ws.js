@@ -454,7 +454,7 @@ function resultAction(address,minutes,stats){
 		{
 			return false;
 		}
-	}else if ((address.indexOf(".es/ofertas")>0 || address.indexOf(".es/cruceros.html")>0 || address.indexOf(".es/cruceros/")>0 || address.indexOf(".es/reservation")>0 || address.indexOf("es/summary.")>0 || address.indexOf(".es/confirmation.html")>0 || address.indexOf(".es/checkout.")>0 || address.indexOf(".es/ofertas/promo-super-todo-incluido-2022.html")>0 || address.indexOf(".es/ofertas/ultima-hora.html")>0)){
+	}else if ((address.indexOf(".es/ofertas")>0 || address.indexOf(".es/cruceros.html")>0 || address.indexOf(".es/cruceros/")>0 || address.indexOf(".es/reservation")>0 || address.indexOf(".es/summary.")>0 || address.indexOf(".es/confirmation.html")>0 || address.indexOf(".es/checkout.")>0 || address.indexOf(".es/ofertas/promo-super-todo-incluido-2022.html")>0 || address.indexOf(".es/ofertas/ultima-hora.html")>0)){
 		let coda="E_CBWB2C";
 		if (stats.queues[coda]!=null)
 		{
@@ -473,7 +473,7 @@ function resultAction(address,minutes,stats){
 		{
 			return false;
 		}
-	}else if ((address.indexOf(".co.uk/deals")>0 || address.indexOf(".co.uk/cruises.html")>0 || address.indexOf(".co.uk/cruises/")>0 || address.indexOf(".co.uk/reservation.")>0 || address.indexOf("co.uk/summary.")>0 || address.indexOf(".co.uk/checkout.")>0 || address.indexOf(".co.uk/confirmation.html")>0)){
+	}else if ((address.indexOf(".co.uk/deals")>0 || address.indexOf(".co.uk/cruises.html")>0 || address.indexOf(".co.uk/cruises/")>0 || address.indexOf(".co.uk/reservation.")>0 || address.indexOf(".co.uk/summary.")>0 || address.indexOf(".co.uk/checkout.")>0 || address.indexOf(".co.uk/confirmation.html")>0)){
 		let coda="GB_CBWB2C";
 		
 		if (stats.queues[coda]!=null)
@@ -493,7 +493,7 @@ function resultAction(address,minutes,stats){
 		{
 			return false;
 		}
-	}else if ((address.indexOf(".ch/fr/promos")>0 || address.indexOf(".ch/fr/cruises.html")>0 || address.indexOf(".ch/fr/cruises/")>0 || address.indexOf(".ch/fr/reservation")>0 || address.indexOf(".ch/fr/confirmation.html")>0 || address.indexOf("ch/fr/summary.")>0 || address.indexOf("ch/fr/checkout.")>0)){
+	}else if ((address.indexOf(".ch/fr/promos")>0 || address.indexOf(".ch/fr/cruises.html")>0 || address.indexOf(".ch/fr/cruises/")>0 || address.indexOf(".ch/fr/reservation")>0 || address.indexOf(".ch/fr/confirmation.html")>0 || address.indexOf(".ch/fr/summary.")>0 || address.indexOf(".ch/fr/checkout.")>0)){
 		let coda="CH_F_CBWB2C";
 		
 		if (stats.queues[coda]!=null)
@@ -513,7 +513,7 @@ function resultAction(address,minutes,stats){
 		{
 			return false;
 		}
-	}else if ((address.indexOf(".nl/deals")>0 || address.indexOf(".nl/cruises/")>0 || address.indexOf(".nl/cruises.html")>0 || address.indexOf(".nl/reservation")>0 || address.indexOf("nl/summary")>0 || address.indexOf(".nl/confirmation.html")>0 || address.indexOf(".nl/checkout.")>0)){
+	}else if ((address.indexOf(".nl/deals")>0 || address.indexOf(".nl/cruises/")>0 || address.indexOf(".nl/cruises.html")>0 || address.indexOf(".nl/reservation")>0 || address.indexOf(".nl/summary")>0 || address.indexOf(".nl/confirmation.html")>0 || address.indexOf(".nl/checkout.")>0)){
 		let coda="NL_CBWB2C";
 		
 		if (stats.queues[coda]!=null)
@@ -533,7 +533,7 @@ function resultAction(address,minutes,stats){
 		{
 			return false;
 		}
-	}else if ((address.indexOf(".be/deals")>0 || address.indexOf(".be/cruises/")>0 || address.indexOf(".be/cruises.html")>0 || address.indexOf(".be/reservation")>0 || address.indexOf("be/summary")>0 || address.indexOf(".be/confirmation.html")>0 || address.indexOf(".be/checkout.")>0)){
+	}else if ((address.indexOf(".be/deals")>0 || address.indexOf(".be/cruises/")>0 || address.indexOf(".be/cruises.html")>0 || address.indexOf(".be/reservation")>0 || address.indexOf(".be/summary")>0 || address.indexOf(".be/confirmation.html")>0 || address.indexOf(".be/checkout.")>0)){
 		let coda="B_F_CBWB2C";
 		
 		if (stats.queues[coda]!=null)
@@ -593,7 +593,7 @@ function resultAction(address,minutes,stats){
 		{
 			return false;
 		}
-	}else if ((address.indexOf(".de/angebote")>0 || address.indexOf(".de/cruises/")>0 || address.indexOf(".de/cruises.html")>0 || address.indexOf(".de/reservation")>0 || address.indexOf("de/summary")>0 || address.indexOf(".de/confirmation.html")>0 || address.indexOf(".de/checkout.")>0)){
+	}else if ((address.indexOf(".de/angebote")>0 || address.indexOf(".de/cruises/")>0 || address.indexOf(".de/cruises.html")>0 || address.indexOf(".de/reservation")>0 || address.indexOf(".de/summary")>0 || address.indexOf(".de/confirmation.html")>0 || address.indexOf(".de/checkout.")>0)){
 		let coda="D_CBWB2C";
 		
 		if (stats.queues[coda]!=null)
@@ -613,7 +613,7 @@ function resultAction(address,minutes,stats){
 		{
 			return false;
 		}
-	}else if ((address.indexOf(".ch/de/angebote")>0 || address.indexOf(".ch/de/cruises/")>0 || address.indexOf(".ch/de/cruises.html")>0 || address.indexOf(".ch/de/reservation")>0 || address.indexOf("ch/de/summary")>0 || address.indexOf(".ch/de/confirmation.html")>0 || address.indexOf(".ch/de/checkout.")>0)){
+	}else if ((address.indexOf(".ch/de/angebote")>0 || address.indexOf(".ch/de/cruises/")>0 || address.indexOf(".ch/de/cruises.html")>0 || address.indexOf(".ch/de/reservation")>0 || address.indexOf(".ch/de/summary")>0 || address.indexOf(".ch/de/confirmation.html")>0 || address.indexOf(".ch/de/checkout.")>0)){
 		let coda="CH_D_CBWB2C";
 		
 		if (stats.queues[coda]!=null)
@@ -633,7 +633,7 @@ function resultAction(address,minutes,stats){
 		{
 			return false;
 		}
-	}else if ((address.indexOf(".at/angebote")>0 || address.indexOf(".at/cruises/")>0 || address.indexOf(".at/cruises.html")>0 || address.indexOf(".at/reservation")>0 || address.indexOf("at/summary")>0 || address.indexOf(".at/confirmation.html")>0 || address.indexOf(".at/checkout.")>0)){
+	}else if ((address.indexOf(".at/angebote")>0 || address.indexOf(".at/cruises/")>0 || address.indexOf(".at/cruises.html")>0 || address.indexOf(".at/reservation")>0 || address.indexOf(".at/summary")>0 || address.indexOf(".at/confirmation.html")>0 || address.indexOf(".at/checkout.")>0)){
 		let coda="A_CBWB2C";
 		
 		if (stats.queues[coda]!=null)
