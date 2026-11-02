@@ -43,11 +43,12 @@ version: v1.25.0
 # (compresi i 41 su cluster/test/** e i 13 su cluster/examples/** visti nel
 # report originale; il pacchetto npm `cluster` e' stato poi rimosso da
 # webcb/package.json il 02/11/2026, perche' require('cluster') carica comunque
-# il modulo integrato di Node). Le sezioni [1]-[6] qui sotto motivano nel dettaglio solo
-# i casi di terze parti piu' significativi (quelli su codice non ovviamente
-# morto, o su una regola di sicurezza piu' seria di un test/esempio mai
-# eseguito) — non ogni singolo file escluso, per non duplicare inutilmente
-# quanto gia' spiegato dalla policy di esclusione stessa.
+# il modulo integrato di Node). Le sezioni [1]-[6] qui sotto motivano nel
+# dettaglio solo i casi di terze parti piu' significativi (quelli su codice
+# non ovviamente morto, o su una regola di sicurezza piu' seria di un
+# test/esempio mai eseguito) — non ogni singolo file escluso, per non
+# duplicare inutilmente quanto gia' spiegato dalla policy di esclusione
+# stessa.
 #
 # [1-4] winston — {lib,dist}/winston/transports/http.js:242 e :267
 #       Regola: javascript/HttpToHttps (warning) — 4 occorrenze
@@ -247,3 +248,36 @@ exclude:
 #       dipendenze (sia la copia pinnata direttamente da express sia quella
 #       richiesta da body-parser), senza conflitti di risoluzione. 6.16.0
 #       e' una release di patch, nessun cambio di API atteso.
+
+# ---------------------------------------------------------------------------
+# [10] SCA (Snyk Open Source) — ioredis, Uncontrolled Recursion (HIGH)
+# ---------------------------------------------------------------------------
+#
+#       Segnalazione del 02/11/2026 su costastats e webcb, entrambi con
+#       ioredis@5.11.1. Il difetto e' in redis-parser@3.0.0 (dipendenza di
+#       ioredis 5, CVE-2026-93435): una risposta RESP con migliaia di array
+#       annidati esaurisce lo stack e il RangeError non viene intercettato,
+#       quindi il processo Node termina. Sfruttabile solo da un endpoint
+#       Redis malevolo o compromesso (qui ElastiCache nella VPC), ma con la
+#       v5 bastava una sola risposta per abbattere il worker o costastats.
+#
+#       Verificato con un finto server Redis che risponde a GET con 200.000
+#       array annidati: ioredis 5.11.1 fa terminare il processo con
+#       "RangeError: Maximum call stack size exceeded" dentro
+#       redis-parser/lib/parser.js; ioredis 6.0.0 rifiuta il comando, emette
+#       l'evento 'error' e il processo resta attivo.
+#
+#       FIX APPLICATO (02/11/2026): ioredis portato a ^6.0.0 in entrambi i
+#       package.json (6.0.0 e' la release stabile, dist-tag latest; non usa
+#       piu' redis-parser). Conseguenze:
+#       - engines.node passa a ">=20", requisito di ioredis 6: runtime di
+#         produzione e agent della pipeline devono usare Node 20 o superiore.
+#       - ioredis 6 apre la connessione con HELLO 3 (RESP3). Se il server
+#         rifiuta HELLO, nei test (senza riconnessione automatica) il comando
+#         restava in attesa senza risposta: per questo in ws.js e in
+#         costastats/index.js e' impostato `protocol: 2`, che mantiene il
+#         protocollo della v5. Il progetto usa
+#         solo GET/SET di stringhe, quindi le risposte non cambiano.
+#       - Gli altri default cambiati nella v6 non hanno effetto qui
+#         (retryStrategy e' impostata esplicitamente) oppure sono innocui
+#         (keepalive TCP ora attivo dopo 30 s di inattivita').

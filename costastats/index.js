@@ -16,6 +16,9 @@ const redis = new Redis({
     port: Number(process.env.REDIS_PORT),
     // senza REDIS_PASSWORD si connette senza AUTH, come prima
     password: process.env.REDIS_PASSWORD || undefined,
+    // ioredis 6 apre la connessione con HELLO 3 (RESP3): si resta su RESP2 come
+    // con la v5, cosi' non dipende dal supporto di HELLO lato ElastiCache
+    protocol: 2,
     retryStrategy: (times) => {
         return Math.min(times * 1000, 59000); // Ritenta ogni 1000 ms fino a 59 secondi
     },	
