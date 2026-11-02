@@ -14,19 +14,18 @@ if (missingEnvVars.length > 0) {
 const redis = new Redis({
     host: process.env.REDIS_HOST,
     port: Number(process.env.REDIS_PORT),
-    password: process.env.REDIS_PASSWORD || undefined,
     retryStrategy: (times) => {
         return Math.min(times * 1000, 59000); // Ritenta ogni 1000 ms fino a 59 secondi
     },	
 });
 
 // clientId per Basic Auth verso l'endpoint OAuth di Genesys Cloud,
-// costruito a runtime da client id/secret separati (mai committare il valore gi� codificato)
+// costruito a runtime da client id/secret separati (mai committare il valore codificato)
 const clientId = Buffer.from(
     process.env.GENESYS_CLIENT_ID + ':' + process.env.GENESYS_CLIENT_SECRET
 ).toString('base64');
 
-// fetch e' globale da Node 18: nessuna dipendenza esterna necessaria
+// fetch e' globnode -vale da Node 18: nessuna dipendenza esterna necessaria
 
 
 function readFromCache(key) {

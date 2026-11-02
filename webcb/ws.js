@@ -20,7 +20,7 @@ if (missingEnvVars.length > 0) {
 }
 
 // clientId per Basic Auth verso l'endpoint OAuth di Genesys Cloud,
-// costruito a runtime da client id/secret separati (mai committare il valore gi� codificato)
+// costruito a runtime da client id/secret separati (mai committare il valore codificato)
 const clientId = Buffer.from(
     process.env.GENESYS_CLIENT_ID + ':' + process.env.GENESYS_CLIENT_SECRET
 ).toString('base64');
@@ -32,7 +32,6 @@ const logger = require('./logger');
 const redis = new Redis({
     host: process.env.REDIS_HOST,
     port: Number(process.env.REDIS_PORT),
-    password: process.env.REDIS_PASSWORD || undefined,
     retryStrategy: (times) => {
         return Math.min(times * 100, 1000); // Ritenta ogni 100 ms fino a 2 secondi
     },	
@@ -278,9 +277,11 @@ const allowedOrigins = ['https://webcb-stage.costacrociere.it','https://webcb.co
 		res.end("//location error");
 		return;
 	}	
-    let minutes = (new Date()).getMinutes();
-	let hours=(new Date()).getHours();
-	let mins=(1440  + minutes*1+hours*60 - queryData.tsoff*1) % 1440 ;
+	// tsoff e' getTimezoneOffset() del browser (UTC - ora locale): va applicato
+	// all'ora UTC, non a quella locale del server, altrimenti le fasce orarie di
+	// resultAction slittano se il server non gira in UTC
+	const now = new Date();
+	let mins=(1440 + now.getUTCMinutes() + now.getUTCHours()*60 - queryData.tsoff*1) % 1440 ;
 
 	res.writeHead(200, { 'Content-Type': 'text/javascript' });
     
@@ -452,7 +453,7 @@ function resultAction(address,minutes,stats){
 		{
 			return false;
 		}
-	}else if ((address.indexOf(".es/ofertas")>0 || address.indexOf(".es/cruceros.html")>0 || address.indexOf(".es/cruceros/")>0 || address.indexOf(".es/reservation")>0 || address.indexOf("es/summary.")>0 || address.indexOf(".es/confirmation.html")>0 || address.indexOf(".es/checkout.")>0 || address.indexOf(".es/ofertas/promo-super-todo-incluido-2022.html")>0 || address.indexOf(".es/ofertas/ultima-hora.html")>0)){
+	}else if ((address.indexOf(".es/ofertas")>0 || address.indexOf(".es/cruceros.html")>0 || address.indexOf(".es/cruceros/")>0 || address.indexOf(".es/reservation")>0 || address.indexOf(".es/summary.")>0 || address.indexOf(".es/confirmation.html")>0 || address.indexOf(".es/checkout.")>0 || address.indexOf(".es/ofertas/promo-super-todo-incluido-2022.html")>0 || address.indexOf(".es/ofertas/ultima-hora.html")>0)){
 		let coda="E_CBWB2C";
 		if (stats.queues[coda]!=null)
 		{
@@ -471,7 +472,7 @@ function resultAction(address,minutes,stats){
 		{
 			return false;
 		}
-	}else if ((address.indexOf(".co.uk/deals")>0 || address.indexOf(".co.uk/cruises.html")>0 || address.indexOf(".co.uk/cruises/")>0 || address.indexOf(".co.uk/reservation.")>0 || address.indexOf("co.uk/summary.")>0 || address.indexOf(".co.uk/checkout.")>0 || address.indexOf(".co.uk/confirmation.html")>0)){
+	}else if ((address.indexOf(".co.uk/deals")>0 || address.indexOf(".co.uk/cruises.html")>0 || address.indexOf(".co.uk/cruises/")>0 || address.indexOf(".co.uk/reservation.")>0 || address.indexOf(".co.uk/summary.")>0 || address.indexOf(".co.uk/checkout.")>0 || address.indexOf(".co.uk/confirmation.html")>0)){
 		let coda="GB_CBWB2C";
 		
 		if (stats.queues[coda]!=null)
@@ -491,7 +492,7 @@ function resultAction(address,minutes,stats){
 		{
 			return false;
 		}
-	}else if ((address.indexOf(".ch/fr/promos")>0 || address.indexOf(".ch/fr/cruises.html")>0 || address.indexOf(".ch/fr/cruises/")>0 || address.indexOf(".ch/fr/reservation")>0 || address.indexOf(".ch/fr/confirmation.html")>0 || address.indexOf("ch/fr/summary.")>0 || address.indexOf("ch/fr/checkout.")>0)){
+	}else if ((address.indexOf(".ch/fr/promos")>0 || address.indexOf(".ch/fr/cruises.html")>0 || address.indexOf(".ch/fr/cruises/")>0 || address.indexOf(".ch/fr/reservation")>0 || address.indexOf(".ch/fr/confirmation.html")>0 || address.indexOf(".ch/fr/summary.")>0 || address.indexOf(".ch/fr/checkout.")>0)){
 		let coda="CH_F_CBWB2C";
 		
 		if (stats.queues[coda]!=null)
@@ -511,7 +512,7 @@ function resultAction(address,minutes,stats){
 		{
 			return false;
 		}
-	}else if ((address.indexOf(".nl/deals")>0 || address.indexOf(".nl/cruises/")>0 || address.indexOf(".nl/cruises.html")>0 || address.indexOf(".nl/reservation")>0 || address.indexOf("nl/summary")>0 || address.indexOf(".nl/confirmation.html")>0 || address.indexOf(".nl/checkout.")>0)){
+	}else if ((address.indexOf(".nl/deals")>0 || address.indexOf(".nl/cruises/")>0 || address.indexOf(".nl/cruises.html")>0 || address.indexOf(".nl/reservation")>0 || address.indexOf(".nl/summary")>0 || address.indexOf(".nl/confirmation.html")>0 || address.indexOf(".nl/checkout.")>0)){
 		let coda="NL_CBWB2C";
 		
 		if (stats.queues[coda]!=null)
@@ -531,7 +532,7 @@ function resultAction(address,minutes,stats){
 		{
 			return false;
 		}
-	}else if ((address.indexOf(".be/deals")>0 || address.indexOf(".be/cruises/")>0 || address.indexOf(".be/cruises.html")>0 || address.indexOf(".be/reservation")>0 || address.indexOf("be/summary")>0 || address.indexOf(".be/confirmation.html")>0 || address.indexOf(".be/checkout.")>0)){
+	}else if ((address.indexOf(".be/deals")>0 || address.indexOf(".be/cruises/")>0 || address.indexOf(".be/cruises.html")>0 || address.indexOf(".be/reservation")>0 || address.indexOf(".be/summary")>0 || address.indexOf(".be/confirmation.html")>0 || address.indexOf(".be/checkout.")>0)){
 		let coda="B_F_CBWB2C";
 		
 		if (stats.queues[coda]!=null)
@@ -551,7 +552,7 @@ function resultAction(address,minutes,stats){
 		{
 			return false;
 		}
-	}else if ((address.indexOf(".fi/deals")>0 || address.indexOf(".fi/cruises/")>0 || address.indexOf(".fi/cruises.html")>0 || address.indexOf(".fi/reservation")>0 || address.indexOf("fi/summary")>0 || address.indexOf(".fi/confirmation.html")>0 || address.indexOf(".fi/checkout.")>0)){
+	}else if ((address.indexOf(".fi/deals")>0 || address.indexOf(".fi/cruises/")>0 || address.indexOf(".fi/cruises.html")>0 || address.indexOf(".fi/reservation")>0 || address.indexOf(".fi/summary")>0 || address.indexOf(".fi/confirmation.html")>0 || address.indexOf(".fi/checkout.")>0)){
 		let coda="SK_CBWB2C";
 		
 		if (stats.queues[coda]!=null)
@@ -571,7 +572,47 @@ function resultAction(address,minutes,stats){
 		{
 			return false;
 		}
-	}else if ((address.indexOf(".de/angebote")>0 || address.indexOf(".de/cruises/")>0 || address.indexOf(".de/cruises.html")>0 || address.indexOf(".de/reservation")>0 || address.indexOf("de/summary")>0 || address.indexOf(".de/confirmation.html")>0 || address.indexOf(".de/checkout.")>0)){
+	}else if ((address.indexOf(".eu/deals")>0 || address.indexOf(".eu/cruises/")>0 || address.indexOf(".eu/cruises.html")>0 || address.indexOf(".eu/reservation")>0 || address.indexOf(".eu/summary")>0 || address.indexOf(".eu/confirmation.html")>0 || address.indexOf(".eu/checkout.")>0)){
+		let coda="NM_CBWB2C";
+
+		if (stats.queues[coda]!=null)
+		{
+			let oOnQueueUsers=stats.queues[coda].oOnQueueUsers;
+			let oActiveUsers=stats.queues[coda].oActiveUsers;
+			console.log(coda + " -> oActiveUsers:" + oActiveUsers + " - oOnQueueUsers:" + oOnQueueUsers);
+			if ((minutes>=600 && minutes<=719 && oOnQueueUsers>=15) || (minutes>=720 && minutes<=779 && oOnQueueUsers>=25) || (minutes>=900 && minutes<=1079 && oOnQueueUsers>=15)){
+				return true;
+			}
+			else
+			{
+				return false;
+			}
+		}
+		else
+		{
+			return false;
+		}
+	}else if ((address.indexOf(".eu/pl/deals")>0 || address.indexOf(".eu/pl/cruises/")>0 || address.indexOf(".eu/pl/cruises.html")>0 || address.indexOf(".eu/pl/reservation")>0 || address.indexOf(".eu/pl/summary")>0 || address.indexOf(".eu/pl/confirmation.html")>0 || address.indexOf(".eu/pl/checkout.")>0)){
+		let coda="PL_CBWB2C";
+
+		if (stats.queues[coda]!=null)
+		{
+			let oOnQueueUsers=stats.queues[coda].oOnQueueUsers;
+			let oActiveUsers=stats.queues[coda].oActiveUsers;
+			console.log(coda + " -> oActiveUsers:" + oActiveUsers + " - oOnQueueUsers:" + oOnQueueUsers);
+			if ((minutes>=600 && minutes<=719 && oOnQueueUsers>=15) || (minutes>=720 && minutes<=779 && oOnQueueUsers>=25) || (minutes>=900 && minutes<=1079 && oOnQueueUsers>=15)){
+				return true;
+			}
+			else
+			{
+				return false;
+			}
+		}
+		else
+		{
+			return false;
+		}
+	}else if ((address.indexOf(".de/angebote")>0 || address.indexOf(".de/cruises/")>0 || address.indexOf(".de/cruises.html")>0 || address.indexOf(".de/reservation")>0 || address.indexOf(".de/summary")>0 || address.indexOf(".de/confirmation.html")>0 || address.indexOf(".de/checkout.")>0)){
 		let coda="D_CBWB2C";
 		
 		if (stats.queues[coda]!=null)
@@ -591,7 +632,7 @@ function resultAction(address,minutes,stats){
 		{
 			return false;
 		}
-	}else if ((address.indexOf(".ch/de/angebote")>0 || address.indexOf(".ch/de/cruises/")>0 || address.indexOf(".ch/de/cruises.html")>0 || address.indexOf(".ch/de/reservation")>0 || address.indexOf("ch/de/summary")>0 || address.indexOf(".ch/de/confirmation.html")>0 || address.indexOf(".ch/de/checkout.")>0)){
+	}else if ((address.indexOf(".ch/de/angebote")>0 || address.indexOf(".ch/de/cruises/")>0 || address.indexOf(".ch/de/cruises.html")>0 || address.indexOf(".ch/de/reservation")>0 || address.indexOf(".ch/de/summary")>0 || address.indexOf(".ch/de/confirmation.html")>0 || address.indexOf(".ch/de/checkout.")>0)){
 		let coda="CH_D_CBWB2C";
 		
 		if (stats.queues[coda]!=null)
@@ -611,7 +652,7 @@ function resultAction(address,minutes,stats){
 		{
 			return false;
 		}
-	}else if ((address.indexOf(".at/angebote")>0 || address.indexOf(".at/cruises/")>0 || address.indexOf(".at/cruises.html")>0 || address.indexOf(".at/reservation")>0 || address.indexOf("at/summary")>0 || address.indexOf(".at/confirmation.html")>0 || address.indexOf(".at/checkout.")>0)){
+	}else if ((address.indexOf(".at/angebote")>0 || address.indexOf(".at/cruises/")>0 || address.indexOf(".at/cruises.html")>0 || address.indexOf(".at/reservation")>0 || address.indexOf(".at/summary")>0 || address.indexOf(".at/confirmation.html")>0 || address.indexOf(".at/checkout.")>0)){
 		let coda="A_CBWB2C";
 		
 		if (stats.queues[coda]!=null)

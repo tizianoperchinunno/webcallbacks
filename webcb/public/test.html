@@ -32,11 +32,11 @@ function createCB(){
 	})
 	.then(response => response.json())
 	.then(result => {
-	  document.getElementById("cbout").value=JSON.stringify(result);
-	});
+	  document.getElementById("cbout").innerHTML=JSON.stringify(result);
+	});	
 }
 </script>
-
+server 108
 <textarea cols=50 rows=11 id="cb">
 {
 "Queue":"I_CBWB2C",
@@ -47,6 +47,12 @@ function createCB(){
 "Country":"I", 
 "OptionId":"32432", 
 "Location":"https://www.costacrociere.it" 
+"PageType":"costaHomePage",
+"FirstName":"Tiziano",
+"LastName":"Perchi",
+"Email":"tiziano.perchinunno@econocom.it",
+"ReasonWhy":"info",
+"ReasonDesc":"information request"
 }
 </textarea>
 <input type=button onclick="createCB()">
@@ -61,9 +67,8 @@ Test sito
 
 Controlli:</pre>
 <script>
-var cont=1;
 function $enableCallMeNow(callme){
 	
-	document.getElementById("controlli").textContent+="\n" +cont + " -> " + callme;
+	document.getElementById("controlli").innerHTML+="\nCallMeNow -> " + callme;
 }
 </script>
