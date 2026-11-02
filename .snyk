@@ -155,7 +155,7 @@ exclude:
 # [8] LOW su codice di prima parte
 # ---------------------------------------------------------------------------
 #
-#       webcb/public/test.html:53 (riga 35 nel report del 31/07/2026, spostata
+#       webcb/public/test.html:55 (riga 35 nel report del 31/07/2026, spostata
 #       quando e' stata aggiunta la sezione di test delle regole /rule)
 #       Regola: javascript/DOMXSS (note)
 #
@@ -175,8 +175,8 @@ exclude:
 #       escluderla dal bundle statico, ma e' una questione di esposizione,
 #       non di XSS.
 #
-#       webcb/ws.js:172 e :176 — uso di req.body.Country.length e
-#       req.body.PhoneNumber.length
+#       webcb/ws.js:189 e :193 (172 e 176 nel report del 31/07/2026) — uso di
+#       req.body.Country.length e req.body.PhoneNumber.length
 #       Regola: javascript/HTTPSourceWithUncheckedType (note) — 4 occorrenze
 #       (2 posizioni, ciascuna riportata due volte dal tool)
 #
