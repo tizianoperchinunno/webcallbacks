@@ -23,7 +23,7 @@
 apps.mypurecloud.ie##.firstColumn.dt-cell-align-right.tis.flex-2.value-cell.dt-cell
 apps.mypurecloud.ie##.firstColumn.dt-cell-align-right.tis.flex-2
 apps.mypurecloud.ie##.timeInStatus
-apps.mypurecloud.ie#$?#.timeInRoutingStatus
+apps.mypurecloud.ie##.timeInRoutingStatus
 apps.mypurecloud.ie##.column-unifiedDuration
 
 !Circle status around user

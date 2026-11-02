@@ -1,3 +1,6 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>Test webcb</title>
 <script>
 // Base del servizio: lo stesso host da cui e' servita la pagina (prod o stage).
 // Aperta da file, punta alla produzione.
@@ -42,8 +45,11 @@ function async_load_ospe(url, coda) {
 </script>
 
 <script>
+// Stesso servizio di /rule (WEBCB_BASE): prima la callback andava sempre in
+// produzione anche aprendo la pagina dallo stage
 function createCB(){
-	fetch("https://webcb.costacrociere.it/callback", {
+	document.getElementById("cbout").value = "invio in corso...";
+	fetch(WEBCB_BASE + "/callback", {
 	  method: "POST",
 	  body: document.getElementById("cb").value,
 	  headers: {
@@ -53,6 +59,11 @@ function createCB(){
 	.then(response => response.json())
 	.then(result => {
 	  document.getElementById("cbout").value=JSON.stringify(result);
+	})
+	// rete assente, CORS rifiutato o risposta non JSON: prima l'errore restava
+	// solo in console e il riquadro della risposta rimaneva vuoto
+	.catch(error => {
+	  document.getElementById("cbout").value="errore: " + error;
 	});
 }
 </script>
@@ -75,9 +86,7 @@ server 6
 "ReasonDesc":"information request"
 }
 </textarea>
-<input type=button onclick="createCB()">
-Callback
-</input><br>
+<input type=button value="Callback" onclick="createCB()"><br>
 <textarea cols=50 rows=11 id="cbout">
 </textarea>
 

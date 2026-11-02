@@ -48,13 +48,11 @@ async function leggiRisposta(response, nome) {
 }
 
 
+// Un errore di Redis (Promise rifiutata) arriva al catch di main(), che lo logga
+// e chiude l'esecuzione: senza cache non ha senso chiamare Genesys. Il try/catch
+// che c'era qui non intercettava nulla (mancava await) e restituiva un false mai usato
 function readFromCache(key) {
-    try {
-        return redis.get(key);
-    } catch (error) {
-		logger.info("Errore durante la lettura dalla cache: " + JSON.stringify(error));
-		return false;
-    }
+    return redis.get(key);
 }
 
 async function writeToCache(key, value) {
@@ -62,9 +60,27 @@ async function writeToCache(key, value) {
         await redis.set(key, value);
         return true;
     } catch (error) {
-		logger.info("Errore durante la scrittura dalla cache: " + JSON.stringify(error));
+		logger.error("Errore durante la scrittura nella cache: " + key + " " + ((error && error.message) || error));
 		return false;
     }
+}
+
+// Oltre questo tempo una chiamata a Genesys si considera fallita: senza limite
+// un'esecuzione bloccata poteva sovrapporsi a quelle successive
+const GENESYS_TIMEOUT_MS = 30000;
+function chiamaGenesys(url, options) {
+	return fetch(url, Object.assign({ signal: AbortSignal.timeout(GENESYS_TIMEOUT_MS) }, options));
+}
+
+// Converte un orario locale "HH:MM" del giorno di riferimento in UTC.
+// Prima l'ora si calcolava come testo ("00"+(ora-offset)): fuori dalla giornata
+// UTC usciva un orario non valido, es. 20:00 a UTC-3 -> "T25:00", 00:30 a UTC+1 -> "T-1:30"
+function orarioSlotUtc(giorno, hhmm, offset) {
+	const [ore, minuti] = hhmm.split(":");
+	// tutto in minuti, cosi' funzionano anche gli offset di mezz'ora (es. 5.5)
+	const minutiUtc = Number(ore) * 60 + Number(minuti) - Number(offset) * 60;
+	const d = new Date(Date.UTC(giorno.getUTCFullYear(), giorno.getUTCMonth(), giorno.getUTCDate(), 0, minutiUtc));
+	return d.toISOString(); // RangeError se l'orario o l'offset non sono validi
 }
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -77,11 +93,13 @@ function observationQueryBody(filterParam) {
 }
 
 async function main(){
+    // dichiarata qui: prima era una variabile globale implicita
+    let response;
     try {
-		
+
 		redis.on('error', (err) => {
-			logger.info("Errore di connessione a Redis: " + JSON.stringify(err));
-		});		
+			logger.error("Errore di connessione a Redis: " + ((err && err.message) || err));
+		});
 
         var bearerToken=await readFromCache('token');
 		var sFilterParam=await readFromCache('filter');
@@ -159,7 +177,7 @@ async function main(){
 		if (bearerToken!="" && sFilterParam!="")
 		{
 			filterParam=JSON.parse(sFilterParam);
-			response = await fetch('https://api.mypurecloud.ie/api/v2/analytics/queues/observations/query', {
+			response = await chiamaGenesys('https://api.mypurecloud.ie/api/v2/analytics/queues/observations/query', {
 				 method: 'POST',
 					body: observationQueryBody(filterParam),
 					headers: { 'Content-Type': 'application/json','Authorization':'Bearer '+ bearerToken}
@@ -178,7 +196,7 @@ async function main(){
 		// esecuzione si fermava su Slots.queueList (null) fino alla scadenza del token
 		if (bearerToken=="" || sFilterParam=="" || response.status!=200 || Slots==null){
 			logger.info("autenticazione non valida");
-			response = await fetch('https://login.mypurecloud.ie/oauth/token', {
+			response = await chiamaGenesys('https://login.mypurecloud.ie/oauth/token', {
 				 method: 'POST',
 					body: 'grant_type=client_credentials',
 					headers: { 'Content-Type': 'application/x-www-form-urlencoded','Authorization':'Basic ' + clientId }
@@ -199,7 +217,7 @@ async function main(){
 
 	
 
-			response = await fetch('https://api.mypurecloud.ie/api/v2/flows/datatables/bc0d9fd1-1e37-439c-a416-a45aab740826/rows?showbrief=false&pageSize=200&pageNumber=1&sortOrder=ascending',{
+			response = await chiamaGenesys('https://api.mypurecloud.ie/api/v2/flows/datatables/bc0d9fd1-1e37-439c-a416-a45aab740826/rows?showbrief=false&pageSize=200&pageNumber=1&sortOrder=ascending',{
 					method: 'GET',
 					headers: { 'Content-Type': 'application/json','Authorization':'Bearer '+ bearerToken}
 			});
@@ -208,7 +226,7 @@ async function main(){
 
 			logger.info("recuperata ora legale");
 
-			response = await fetch('https://api.mypurecloud.ie/api/v2/flows/datatables/1e763045-7c2f-47c3-b494-ea43024be0f0/rows?showbrief=false&pageSize=200&pageNumber=1&sortOrder=ascending',{
+			response = await chiamaGenesys('https://api.mypurecloud.ie/api/v2/flows/datatables/1e763045-7c2f-47c3-b494-ea43024be0f0/rows?showbrief=false&pageSize=200&pageNumber=1&sortOrder=ascending',{
 					method: 'GET',
 					headers: { 'Content-Type': 'application/json','Authorization':'Bearer '+ bearerToken}
 			});
@@ -219,13 +237,14 @@ async function main(){
 
 			var SlotQueues={};
 			const righeOraLegaleMancanti=new Set();
+			const fasceNonValide=new Set();
 
 
-			for(c in Slots.entities){
+			for (const c in Slots.entities){
 				Slots.entities[c].calculatedSlots=[];
 				// campo vuoto o con spazi ("A, B"): prima un campo vuoto bloccava tutto il calcolo
 				const q=String(Slots.entities[c].SelectionQueues || "").split(",").map(x=>x.trim()).filter(x=>x!="");
-				for(cc in q){
+				for (const cc in q){
 					SlotQueues[q[cc]]=Slots.entities[c].key
 				}
 				let slots;
@@ -266,12 +285,21 @@ async function main(){
 				    	offset=summer.standard;
 				    	//console.log(data.toISOString() + " ora solare")
 				    }
-				    for (s in slots)
+				    for (const s in slots)
 				    {
-						let start=data.toISOString().slice(0,11)+("00" + (s.split(":")[0]-offset)).slice(-2)+":"+s.split("/")[0].split(":")[1]+":00.000Z";
-						let end=data.toISOString().slice(0,11)+("00" + (s.split("/")[1].split(":")[0]-offset)).slice(-2)+":"+s.split("/")[1].split(":")[1]+":00.000Z";
+						// fascia "HH:MM/HH:MM": se e' scritta male si salta solo quella
+						// (prima un TypeError fermava il calcolo di tutti gli slot)
+						let start, end;
+						try {
+							const [inizio, fine] = s.split("/");
+							start=orarioSlotUtc(data, inizio, offset);
+							end=orarioSlotUtc(data, fine, offset);
+						} catch (e) {
+							fasceNonValide.add(Slots.entities[c].key + " " + s);
+							continue;
+						}
 						Slots.entities[c].calculatedSlots.push({'start':start,'end':end,'availableSlot':slots[s],'count':0})
-					}	
+					}
 				    
 				}
 
@@ -279,17 +307,20 @@ async function main(){
 			if (righeOraLegaleMancanti.size>0){
 				logger.error("tabella ora legale: mancano le righe " + Array.from(righeOraLegaleMancanti).join(", ") + " (quei giorni restano senza slot)");
 			}
+			if (fasceNonValide.size>0){
+				logger.error("tabella slot: fasce orarie o offset non validi, saltati: " + Array.from(fasceNonValide).join(", "));
+			}
 			Slots.SlotQueues=SlotQueues;
 			
 			
 			
 						
 			var qList="";
-			for (a in Slots.entities){
+			for (const a in Slots.entities){
 				qList+=Slots.entities[a].Queues + ",";
 			}
 			
-			response = await fetch('https://api.mypurecloud.ie/api/v2/routing/queues?pageSize=500&pageNumber=1&name=*_CBW*',{
+			response = await chiamaGenesys('https://api.mypurecloud.ie/api/v2/routing/queues?pageSize=500&pageNumber=1&name=*_CBW*',{
 					method: 'GET',
 					headers: { 'Content-Type': 'application/json','Authorization':'Bearer '+ bearerToken}
 			});
@@ -312,7 +343,7 @@ async function main(){
 				]
 			};
 			let queueList={};
-			for (i in data.entities){
+			for (const i in data.entities){
 				filterParam.queues[data.entities[i].id]=data.entities[i].name;
 				
 				if (qList.indexOf(data.entities[i].name)>=0)
@@ -352,7 +383,7 @@ async function main(){
 			
 			sFilterParam=JSON.stringify(filterParam);
 
-			response = await fetch('https://api.mypurecloud.ie/api/v2/analytics/queues/observations/query', {
+			response = await chiamaGenesys('https://api.mypurecloud.ie/api/v2/analytics/queues/observations/query', {
 				 method: 'POST',
 					body: observationQueryBody(filterParam),
 					headers: { 'Content-Type': 'application/json','Authorization':'Bearer '+ bearerToken}
@@ -395,7 +426,7 @@ async function main(){
 			}
 		}
 		stats.timestamp=new Date();
-		writeToCache('stats', JSON.stringify(stats));
+		await writeToCache('stats', JSON.stringify(stats));
 		logger.info("statistiche salvate in cache (" + Object.keys(stats.queues).length + " code)");
 		//console.log(JSON.stringify(stats));
 
@@ -407,7 +438,7 @@ async function main(){
 		let conteggi=[];
 		
 
-		for(q in Slots.queueList){
+		for (const q in Slots.queueList){
 			conversationFilter.segmentFilters[1].predicates.push({"dimension":"queueId","value": Slots.queueList[q]})
 		}
 
@@ -428,7 +459,7 @@ async function main(){
 			let sConversationFilter=JSON.stringify(conversationFilter);		
 			//console.log(sConversationFilter);
 			
-			response = await fetch('https://api.mypurecloud.ie/api/v2/analytics/conversations/details/query', {
+			response = await chiamaGenesys('https://api.mypurecloud.ie/api/v2/analytics/conversations/details/query', {
 				 method: 'POST',
 					body: sConversationFilter,
 					headers: { 'Content-Type': 'application/json','Authorization':'Bearer '+ bearerToken}
@@ -465,8 +496,8 @@ async function main(){
 		
 		//console.log(conteggi);
 		
-		for (sl in Slots.entities){
-			for (csl in Slots.entities[sl].calculatedSlots){
+		for (const sl in Slots.entities){
+			for (const csl in Slots.entities[sl].calculatedSlots){
 				Slots.entities[sl].calculatedSlots[csl].count=0;
 			}
 		}
@@ -478,12 +509,12 @@ async function main(){
 		}, {});
 		//console.log(occurrences);
 		
-		for (o in occurrences){
+		for (const o in occurrences){
 			Slots.entities.find(occ=>occ.key==o.split(">")[0]).calculatedSlots.find(cs=>cs.start==o.split(">")[1]).count=occurrences[o];
 		}
 		
 		Slots.timestamp=(new Date()).toISOString()
-		writeToCache('Slots', JSON.stringify(Slots));
+		await writeToCache('Slots', JSON.stringify(Slots));
 		
 	
 		logger.info("Statistiche recuperate da API");
