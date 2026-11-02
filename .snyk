@@ -41,7 +41,9 @@ version: v1.25.0
 #
 # La direttiva `exclude` sotto chiude da sola i 66 findings in node_modules
 # (compresi i 41 su cluster/test/** e i 13 su cluster/examples/** visti nel
-# report originale). Le sezioni [1]-[6] qui sotto motivano nel dettaglio solo
+# report originale; il pacchetto npm `cluster` e' stato poi rimosso da
+# webcb/package.json il 02/11/2026, perche' require('cluster') carica comunque
+# il modulo integrato di Node). Le sezioni [1]-[6] qui sotto motivano nel dettaglio solo
 # i casi di terze parti piu' significativi (quelli su codice non ovviamente
 # morto, o su una regola di sicurezza piu' seria di un test/esempio mai
 # eseguito) — non ogni singolo file escluso, per non duplicare inutilmente
@@ -155,8 +157,9 @@ exclude:
 # [8] LOW su codice di prima parte
 # ---------------------------------------------------------------------------
 #
-#       webcb/public/test.html:55 (riga 35 nel report del 31/07/2026, spostata
-#       quando e' stata aggiunta la sezione di test delle regole /rule)
+#       webcb/public/test.html:61 (riga 35 nel report del 31/07/2026, spostata
+#       quando e' stata aggiunta la sezione di test delle regole /rule e poi
+#       con la gestione degli errori di createCB)
 #       Regola: javascript/DOMXSS (note)
 #
 #       NON RIPRODUCIBILE. Il messaggio Snyk descrive un flusso verso
@@ -175,7 +178,7 @@ exclude:
 #       escluderla dal bundle statico, ma e' una questione di esposizione,
 #       non di XSS.
 #
-#       webcb/ws.js:189 e :193 (172 e 176 nel report del 31/07/2026) — uso di
+#       webcb/ws.js:196 e :200 (172 e 176 nel report del 31/07/2026) — uso di
 #       req.body.Country.length e req.body.PhoneNumber.length
 #       Regola: javascript/HTTPSourceWithUncheckedType (note) — 4 occorrenze
 #       (2 posizioni, ciascuna riportata due volte dal tool)

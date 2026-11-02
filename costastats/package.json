@@ -14,7 +14,6 @@
   "dependencies": {
     "dotenv": "^16.4.5",
     "ioredis": "^5.3.2",
-    "node-fetch": "^2.7.0",
     "winston": "^3.13.0",
     "winston-daily-rotate-file": "^5.0.0"
   }

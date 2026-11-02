@@ -35,16 +35,21 @@ const redis = new Redis({
     // senza REDIS_PASSWORD si connette senza AUTH, come prima
     password: process.env.REDIS_PASSWORD || undefined,
     retryStrategy: (times) => {
-        return Math.min(times * 100, 1000); // Ritenta ogni 100 ms fino a 2 secondi
-    },	
+        return Math.min(times * 100, 1000); // attesa crescente di 100 ms a tentativo, al massimo 1 secondo
+    },
 });
+
+// Oltre questo tempo una chiamata a Genesys si considera fallita: senza limite
+// la richiesta del browser restava appesa fino al timeout del bilanciatore
+const GENESYS_TIMEOUT_MS = 15000;
 
 redis.on('connect', () => {
   logger.info('Connesso a Redis');
 });
 redis.on('error', (err) => {
-	logger.info('Errore di connessione a Redis: ' + JSON.stringify(err));
-});	
+	// JSON.stringify di un Error non include il messaggio
+	logger.error('Errore di connessione a Redis: ' + ((err && err.message) || err));
+});
 redis.on('reconnecting', () => {
   logger.info('Tentativo di riconnessione a Redis');
 });
@@ -112,23 +117,30 @@ const allowedOrigins = ['https://webcb-stage.costacrociere.it','https://webcb.co
 	const normalizeOrigin = (req) =>
 		typeof req.headers.origin === 'string' ? req.headers.origin.toLowerCase() : '';
 
+	// imposta gli header CORS se l'origine e' ammessa; restituisce false altrimenti
+	const consentiCors = (req, res) => {
+		if (!allowedOrigins.includes(normalizeOrigin(req))) return false;
+		res.setHeader('Access-Control-Allow-Origin', '*');
+		res.setHeader('Access-Control-Allow-Methods', '*');
+		res.setHeader('Access-Control-Allow-Headers', '*');
+		return true;
+	};
+
 	app.options('*', (req, res) => {
-		let origin = normalizeOrigin(req);
-		if (allowedOrigins.includes(origin)) {
-			res.setHeader('Access-Control-Allow-Origin', '*');
-			res.setHeader('Access-Control-Allow-Methods', '*');
-			res.setHeader('Access-Control-Allow-Headers', '*');			 
-		}else{
-			logger.info("-> KO|CORS " + origin);
-		}  	  
+		if (!consentiCors(req, res)) {
+			logger.info("-> KO|CORS " + normalizeOrigin(req));
+		}
 	  res.send();
 	});
 
   app.post('/ExternalLog', (req, res) => {
     const postData = req.body;
-    if (postData.log) 
+    if (postData.log)
     	{
-    		logger.info(postData.log);
+    		// endpoint pubblico: senza togliere gli a capo chiunque poteva aggiungere
+    		// al file di log righe false (es. "[data] ERROR: ...")
+    		const testo = typeof postData.log === 'string' ? postData.log : JSON.stringify(postData.log);
+    		logger.info(testo.replace(/[\r\n]+/g, ' '));
     		res.json({ "status": "OK"});
     	}
     else
@@ -156,15 +168,10 @@ const allowedOrigins = ['https://webcb-stage.costacrociere.it','https://webcb.co
 	// variabili di richiesta: devono restare locali, altrimenti richieste
 	// concorrenti nello stesso worker si sovrascrivono a vicenda
 	let response, data;
-	let origin = normalizeOrigin(req);
-	if (allowedOrigins.includes(origin)) {
-		res.setHeader('Access-Control-Allow-Origin', '*');
-		res.setHeader('Access-Control-Allow-Methods', '*');
-		res.setHeader('Access-Control-Allow-Headers', '*');			 
-	}else{
-		res.json({"status":"KO|CORS"});logger.info(UUID + "-> KO|CORS " + origin);
+	if (!consentiCors(req, res)) {
+		res.json({"status":"KO|CORS"});logger.info(UUID + "-> KO|CORS " + normalizeOrigin(req));
 		return;
-	}  
+	}
 	 
     //const postData = req.body;
 	logger.info(UUID + "-> " + JSON.stringify(req.body));
@@ -223,14 +230,16 @@ const allowedOrigins = ['https://webcb-stage.costacrociere.it','https://webcb.co
 	}
 	
 	
-	if (bearerToken!="") 
+	if (bearerToken!="")
 	{
 		response = await fetch('https://api.mypurecloud.ie/api/v2/flows/executions', {
 			 method: 'POST',
 				body: JSON.stringify(params),
-				headers: { 'Content-Type': 'application/json','Authorization':'Bearer '+ bearerToken}
-		});		
-		data = await response.json();
+				headers: { 'Content-Type': 'application/json','Authorization':'Bearer '+ bearerToken},
+				signal: AbortSignal.timeout(GENESYS_TIMEOUT_MS)
+		});
+		// un 401 con corpo non JSON faceva saltare il rinnovo del token
+		data = await response.json().catch(() => null);
 		logger.info(UUID + "-> " + JSON.stringify(data));
 		if(response.status==200){
 			res.json({"status":"OK|" + req.body.Type})
@@ -242,11 +251,12 @@ const allowedOrigins = ['https://webcb-stage.costacrociere.it','https://webcb.co
 		response = await fetch('https://login.mypurecloud.ie/oauth/token', {
 			 method: 'POST',
 				body: 'grant_type=client_credentials',
-				headers: { 'Content-Type': 'application/x-www-form-urlencoded','Authorization':'Basic ' + clientId }
+				headers: { 'Content-Type': 'application/x-www-form-urlencoded','Authorization':'Basic ' + clientId },
+				signal: AbortSignal.timeout(GENESYS_TIMEOUT_MS)
 		});
 
-		data = await response.json();
-		if (response.status!=200 || !data.access_token){
+		data = await response.json().catch(() => null);
+		if (response.status!=200 || !data || !data.access_token){
 			res.json({"status":"KO|na"});
 			logger.info(UUID + "-> KO|auth (" + response.status + ")");
 			return;
@@ -265,9 +275,10 @@ const allowedOrigins = ['https://webcb-stage.costacrociere.it','https://webcb.co
 		response = await fetch('https://api.mypurecloud.ie/api/v2/flows/executions', {
 			 method: 'POST',
 				body: JSON.stringify(params),
-				headers: { 'Content-Type': 'application/json','Authorization':'Bearer '+ bearerToken}
-		});		
-		data = await response.json();
+				headers: { 'Content-Type': 'application/json','Authorization':'Bearer '+ bearerToken},
+				signal: AbortSignal.timeout(GENESYS_TIMEOUT_MS)
+		});
+		data = await response.json().catch(() => null);
 		logger.info(UUID + "-> " + JSON.stringify(data));
 		if(response.status==200){
 			res.json({"status":"OK|" + req.body.Type});
@@ -335,7 +346,9 @@ const allowedOrigins = ['https://webcb-stage.costacrociere.it','https://webcb.co
 			filtered.sort((a, b) => {
     			return a.schedulingTime.localeCompare(b.schedulingTime);
 			});			
-			slots="\n6;var t="+ JSON.stringify(filtered) + ";\n"+ "try{$setAvailableSchedulingTime(t);}catch(e){}\n";
+			// slot passati direttamente alla funzione: "var t=..." creava (o sovrascriveva)
+			// una variabile globale t nella pagina del sito che carica lo script
+			slots="\n6;try{$setAvailableSchedulingTime("+ JSON.stringify(filtered) + ");}catch(e){}\n";
 		}
 	}else{
 		queue="";
@@ -378,6 +391,20 @@ const allowedOrigins = ['https://webcb-stage.costacrociere.it','https://webcb.co
 		res.end("Not found");
 	});
 
+	// Errori sollevati prima dei gestori (JSON malformato, body oltre 10kb, URL non
+	// decodificabile): senza questo Express rispondeva con una pagina HTML contenente
+	// lo stack trace e i percorsi del server, e il client che si aspetta JSON falliva
+	app.use((err, req, res, next) => {
+		logger.error(req.method + " " + req.path + " in errore: " + ((err && err.message) || err));
+		if (res.headersSent) return next(err);
+		consentiCors(req, res);
+		if (err && err.status >= 400 && err.status < 500) {
+			res.status(err.status).json({ "status": "KO|bad request" });
+		} else {
+			res.status(500).json({ "status": "KO|na" });
+		}
+	});
+
   // Creazione del server isolata in httpServer.js: vedi quel file e .snyk
   // (sezione [7]) per la motivazione del listener HTTP in chiaro.
   const server = createHttpServer(app);
@@ -412,8 +439,9 @@ async function writeToCache(key, value) {
         await redis.set(key, value);
         return true;
     } catch (error) {
-        console.error('Errore durante la scrittura nel cache:'+key, error);
-	return false;
+        // tramite logger, cosi' l'errore finisce anche nel file di log
+        logger.error('Errore durante la scrittura nella cache: ' + key + ' ' + ((error && error.message) || error));
+        return false;
     }
 }
 function isIsoDate(str) {
