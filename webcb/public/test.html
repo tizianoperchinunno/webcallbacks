@@ -39,13 +39,6 @@ function async_load_ospe(url, coda) {
 	var j = document.getElementsByTagName('script') [0];
 	j.parentNode.insertBefore(s, j);
 };
-if (window.attachEvent) {
-	window.attachEvent('onload', async_load_ospe);
-} else {
-	window.addEventListener('load', async_load_ospe, false);
-}
-
-
 </script>
 
 <script>
@@ -59,8 +52,8 @@ function createCB(){
 	})
 	.then(response => response.json())
 	.then(result => {
-	  document.getElementById("cbout").innerHTML=JSON.stringify(result);
-	});	
+	  document.getElementById("cbout").value=JSON.stringify(result);
+	});
 }
 </script>
 server 6
@@ -68,27 +61,18 @@ server 6
 {
 "Queue":"I_CBWB2C",
 "Subject":"callback subject",
-<<<<<<< HEAD
-"Type":"now", 
-"ScheduleDayTime": "2024-04-02T10:30:00.000Z", 
-"PhoneNumber":"+393484461572", 
-"Country":"I", 
-"OptionId":"32432", 
-"Location":"https://www.costacrociere.it" 
+"Type":"now",
+"ScheduleDayTime": "2024-04-02T10:30:00.000Z",
+"PhoneNumber":"+393484461572",
+"Country":"I",
+"OptionId":"32432",
+"Location":"https://www.costacrociere.it",
 "PageType":"costaHomePage",
 "FirstName":"Tiziano",
 "LastName":"Perchi",
 "Email":"tiziano.perchinunno@econocom.it",
 "ReasonWhy":"info",
 "ReasonDesc":"information request"
-=======
-"Type":"now",
-"ScheduleDayTime": "2024-04-02T10:30:00.000Z",
-"PhoneNumber":"+393484461572",
-"Country":"I",
-"OptionId":"32432",
-"Location":"https://www.costacrociere.it"
->>>>>>> 175dcb838c969369276c5818c44ec4d1b7bd9ab8
 }
 </textarea>
 <input type=button onclick="createCB()">
@@ -109,15 +93,10 @@ Test sito
 
 Controlli:</pre>
 <script>
-function $enableCallMeNow(callme){
-	
-	document.getElementById("controlli").innerHTML+="\nCallMeNow -> " + callme;
-=======
 var cont=0;
 function logControllo(testo){
 	cont++;
 	document.getElementById("controlli").textContent+="\n" + cont + " [" + new Date().toLocaleTimeString() + "] " + testo;
-
 }
 function $enableCallMeNow(callme){
 	logControllo("$enableCallMeNow(" + callme + ")");

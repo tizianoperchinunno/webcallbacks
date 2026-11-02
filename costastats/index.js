@@ -14,6 +14,8 @@ if (missingEnvVars.length > 0) {
 const redis = new Redis({
     host: process.env.REDIS_HOST,
     port: Number(process.env.REDIS_PORT),
+    // senza REDIS_PASSWORD si connette senza AUTH, come prima
+    password: process.env.REDIS_PASSWORD || undefined,
     retryStrategy: (times) => {
         return Math.min(times * 1000, 59000); // Ritenta ogni 1000 ms fino a 59 secondi
     },	
@@ -25,7 +27,25 @@ const clientId = Buffer.from(
     process.env.GENESYS_CLIENT_ID + ':' + process.env.GENESYS_CLIENT_SECRET
 ).toString('base64');
 
-// fetch e' globnode -vale da Node 18: nessuna dipendenza esterna necessaria
+// fetch e' globale da Node 18: nessuna dipendenza esterna necessaria
+
+// Mai scrivere nei log il token completo (i log restano 20 giorni e il token
+// da' accesso alle API Genesys): bastano le ultime cifre per riconoscerlo
+function mascheraToken(token) {
+	return token ? "..." + String(token).slice(-6) : "(assente)";
+}
+
+// Legge la risposta di una chiamata Genesys e la rifiuta se non e' un 200:
+// durante la rigenerazione una risposta di errore (429, 5xx...) letta come
+// buona finiva in cache (filtro senza code, slot vuoti) e ci restava fino al
+// rinnovo successivo del token, cioe' fino a un giorno
+async function leggiRisposta(response, nome) {
+	const body = await response.json().catch(() => null);
+	if (response.status != 200 || body == null) {
+		throw new Error(nome + " in errore (" + response.status + "): " + JSON.stringify(body));
+	}
+	return body;
+}
 
 
 function readFromCache(key) {
@@ -67,11 +87,11 @@ async function main(){
 		var sFilterParam=await readFromCache('filter');
 		
 		var sSlots=await readFromCache('Slots');
-		var Slots=JSON.parse(sSlots);
-        
+		var Slots=sSlots ? JSON.parse(sSlots) : null;
+
         if (bearerToken==null) bearerToken="";
 		if (sFilterParam==null) sFilterParam="";
-		logger.info("Chiave recuperata da Redis: " + bearerToken);
+		logger.info("Chiave recuperata da Redis: " + mascheraToken(bearerToken));
 		//logger.info("Filtro recuperato da Redis: " + sFilterParam);
 
 		const currentDate = new Date();
@@ -144,7 +164,7 @@ async function main(){
 					body: observationQueryBody(filterParam),
 					headers: { 'Content-Type': 'application/json','Authorization':'Bearer '+ bearerToken}
 			});
-			data = await response.json();
+			data = await response.json().catch(() => ({}));
 			if (response.status==200){
 				logger.info("Statistiche recuperate da API");
 			}else{
@@ -154,7 +174,9 @@ async function main(){
 
 		// Qualsiasi errore (non solo 401) rigenera token e filtro: prima un 400/403/429
 		// mandava in crash lo script e le stats in cache restavano vecchie per sempre.
-		if (bearerToken=="" || sFilterParam=="" || response.status!=200){
+		// Anche senza la chiave Slots in cache: prima, con token e filtro validi, ogni
+		// esecuzione si fermava su Slots.queueList (null) fino alla scadenza del token
+		if (bearerToken=="" || sFilterParam=="" || response.status!=200 || Slots==null){
 			logger.info("autenticazione non valida");
 			response = await fetch('https://login.mypurecloud.ie/oauth/token', {
 				 method: 'POST',
@@ -162,11 +184,13 @@ async function main(){
 					headers: { 'Content-Type': 'application/x-www-form-urlencoded','Authorization':'Basic ' + clientId }
 			});
 
-			data = await response.json();
+			data = await leggiRisposta(response, "oauth/token");
+			if (!data.access_token) throw new Error("oauth/token senza access_token");
 			bearerToken=data.access_token;
-			logger.info("token recuperato da auth API: " + bearerToken);
-			
-			if (writeToCache('token', data.access_token)){
+			logger.info("token recuperato da auth API: " + mascheraToken(bearerToken));
+
+			// await: senza, writeToCache restituisce una Promise (sempre "vera")
+			if (await writeToCache('token', data.access_token)){
 				logger.info("token salvato")
 			}else{
 				logger.info("savlataggio token in errore")
@@ -179,30 +203,40 @@ async function main(){
 					method: 'GET',
 					headers: { 'Content-Type': 'application/json','Authorization':'Bearer '+ bearerToken}
 			});
-			let SummerTime = await response.json();
+			let SummerTime = await leggiRisposta(response, "tabella ora legale");
+			if (!Array.isArray(SummerTime.entities)) SummerTime.entities=[];
 
 			logger.info("recuperata ora legale");
-			
+
 			response = await fetch('https://api.mypurecloud.ie/api/v2/flows/datatables/1e763045-7c2f-47c3-b494-ea43024be0f0/rows?showbrief=false&pageSize=200&pageNumber=1&sortOrder=ascending',{
 					method: 'GET',
 					headers: { 'Content-Type': 'application/json','Authorization':'Bearer '+ bearerToken}
 			});
-			Slots = await response.json();
-			
-			
-			
-			var SlotQueues={};	
-			
-			
+			Slots = await leggiRisposta(response, "tabella slot");
+			if (!Array.isArray(Slots.entities)) throw new Error("tabella slot senza righe: " + JSON.stringify(Slots));
+
+
+
+			var SlotQueues={};
+			const righeOraLegaleMancanti=new Set();
+
+
 			for(c in Slots.entities){
-				const q=Slots.entities[c].SelectionQueues.split(",");
+				Slots.entities[c].calculatedSlots=[];
+				// campo vuoto o con spazi ("A, B"): prima un campo vuoto bloccava tutto il calcolo
+				const q=String(Slots.entities[c].SelectionQueues || "").split(",").map(x=>x.trim()).filter(x=>x!="");
 				for(cc in q){
 					SlotQueues[q[cc]]=Slots.entities[c].key
 				}
-				let slots=JSON.parse(Slots.entities[c].Slots);
-				
-				Slots.entities[c].calculatedSlots=[];
-				
+				let slots;
+				try {
+					slots=JSON.parse(Slots.entities[c].Slots);
+				} catch (e) {
+					// una riga con Slots non valido non deve bloccare il calcolo delle altre
+					logger.error("tabella slot: campo Slots non valido nella riga " + Slots.entities[c].key + ": " + Slots.entities[c].Slots);
+					continue;
+				}
+
 				let oggi = new Date();
 				
 				// Ciclo per i prossimi 10 giorni
@@ -216,6 +250,12 @@ async function main(){
 				    // Imposta l'orario a mezzogiorno (12:00)
 				    data.setHours(12, 0, 0, 0);
 				    let summer=SummerTime.entities.find(i=>i.key==Slots.entities[c].Origin+"_"+(data.getFullYear()))
+				    if (summer==null){
+				    	// manca la riga dell'anno (es. a fine dicembre i 10 giorni sconfinano
+				    	// nell'anno dopo): si salta il giorno invece di bloccare tutti gli slot
+				    	righeOraLegaleMancanti.add(Slots.entities[c].Origin+"_"+(data.getFullYear()));
+				    	continue;
+				    }
 				    // Stampa la data
 				    let offset=0;
 				    if (data.toISOString()>=summer.StartDate && data.toISOString()<summer.EndDate){
@@ -235,7 +275,10 @@ async function main(){
 				    
 				}
 
-			}			
+			}
+			if (righeOraLegaleMancanti.size>0){
+				logger.error("tabella ora legale: mancano le righe " + Array.from(righeOraLegaleMancanti).join(", ") + " (quei giorni restano senza slot)");
+			}
 			Slots.SlotQueues=SlotQueues;
 			
 			
@@ -250,8 +293,11 @@ async function main(){
 					method: 'GET',
 					headers: { 'Content-Type': 'application/json','Authorization':'Bearer '+ bearerToken}
 			});
-			data = await response.json();
-			
+			data = await leggiRisposta(response, "routing/queues");
+			if (!Array.isArray(data.entities) || data.entities.length==0){
+				throw new Error("routing/queues: nessuna coda *_CBW* restituita");
+			}
+
 			logger.info("recuperate elenco code");
 			
 			filterParam={ 
@@ -305,21 +351,20 @@ async function main(){
 			});
 			
 			sFilterParam=JSON.stringify(filterParam);
-			writeToCache('filter', sFilterParam);
-			
-			logger.info("salvato filtro per observation/query");
-			
+
 			response = await fetch('https://api.mypurecloud.ie/api/v2/analytics/queues/observations/query', {
 				 method: 'POST',
 					body: observationQueryBody(filterParam),
 					headers: { 'Content-Type': 'application/json','Authorization':'Bearer '+ bearerToken}
 			});
-			data = await response.json();
 			//console.log(JSON.stringify(data));
-			if (response.status!=200){
-				throw new Error("observations/query in errore (" + response.status + "): " + JSON.stringify(data));
-			}
+			data = await leggiRisposta(response, "observations/query");
 			logger.info("statistiche recuperate");
+
+			// il filtro si salva solo dopo che Genesys lo ha accettato: se qualcosa
+			// va storto resta in cache l'ultimo filtro buono
+			await writeToCache('filter', sFilterParam);
+			logger.info("salvato filtro per observation/query");
 
 
 
@@ -365,7 +410,13 @@ async function main(){
 		for(q in Slots.queueList){
 			conversationFilter.segmentFilters[1].predicates.push({"dimension":"queueId","value": Slots.queueList[q]})
 		}
-				
+
+		// participants/sessions/segments o participantName possono mancare (es. callback
+		// senza nome): prima un solo caso del genere bloccava il conteggio di tutti gli slot
+		const primaSessione = (conv) => conv.participants?.[0]?.sessions?.[0];
+		const slotDi = (conv) => Slots.SlotQueues[filterParam.queues[primaSessione(conv)?.segments?.[0]?.queueId]];
+		const isCliente = (p) => p?.purpose=="customer" && (p.participantName || "").indexOf("Default")<0;
+
 		while (convCount>pageNumber*100)
 		{
 			conversationFilter.paging.pageNumber=pageNumber+1;
@@ -389,13 +440,13 @@ async function main(){
 
 			//.filter(conve=>conve.conversationId=='cc313aa7-7060-4d6a-953e-5d1e7b9cf5cb')
 			// senza callback pendenti Genesys risponde solo {"totalHits":0}, senza "conversations"
-			conteggi=conteggi.concat((conversations.conversations || []).filter(conve=>Slots.SlotQueues[filterParam.queues[conve.participants[0].sessions[0].segments[0].queueId]]!=null).filter(conv => (conv.participants[0].purpose=="customer" && conv.participants[0].participantName.indexOf("Default")<0) || (conv.participants[1].purpose=="customer" && conv.participants[1].participantName.indexOf("Default")<0) )
+			conteggi=conteggi.concat((conversations.conversations || []).filter(conve=>slotDi(conve)!=null).filter(conv => isCliente(conv.participants[0]) || isCliente(conv.participants[1]))
 			.map(item => ({
   				//queueName: filterParam.queues[item.participants[0].sessions[0].segments[0].queueId],
-  				slotName: Slots.SlotQueues[filterParam.queues[item.participants[0].sessions[0].segments[0].queueId]],
+  				slotName: slotDi(item),
   				conversationId: item.conversationId,
-  				originalcallbackScheduledTime: item.participants[0].sessions[0].callbackScheduledTime,
-				callbackScheduledTime: Slots.entities.find(ss=> ss.key==Slots.SlotQueues[filterParam.queues[item.participants[0].sessions[0].segments[0].queueId]]).calculatedSlots.find(dt => (dt.start<=item.participants[0].sessions[0].callbackScheduledTime) && (dt.end>item.participants[0].sessions[0].callbackScheduledTime))
+  				originalcallbackScheduledTime: primaSessione(item).callbackScheduledTime,
+				callbackScheduledTime: (Slots.entities.find(ss=> ss.key==slotDi(item))?.calculatedSlots || []).find(dt => (dt.start<=primaSessione(item).callbackScheduledTime) && (dt.end>primaSessione(item).callbackScheduledTime))
 			})));
 			conteggi=conteggi.filter(conve=>conve.callbackScheduledTime!=null)
 			await delay(1000);

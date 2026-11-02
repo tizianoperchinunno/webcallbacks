@@ -32,6 +32,8 @@ const logger = require('./logger');
 const redis = new Redis({
     host: process.env.REDIS_HOST,
     port: Number(process.env.REDIS_PORT),
+    // senza REDIS_PASSWORD si connette senza AUTH, come prima
+    password: process.env.REDIS_PASSWORD || undefined,
     retryStrategy: (times) => {
         return Math.min(times * 100, 1000); // Ritenta ogni 100 ms fino a 2 secondi
     },	
@@ -68,13 +70,29 @@ if (cluster.isMaster) {
 
   app.use(express.static(path.join(__dirname, 'public')));
   app.use(express.json({ limit: '10kb' }));
-  
 
-  app.get('/healthcheck', async (req, res) => {
+  // Express 4 non intercetta gli errori dei gestori async: un'eccezione (Genesys
+  // irraggiungibile, risposta non JSON, parametri inattesi) diventava una unhandled
+  // rejection che manda in crash l'intero worker, con tutte le richieste in corso.
+  const gestisciErrori = (nome, rispostaErrore, handler) => async (req, res) => {
+    try {
+      await handler(req, res);
+    } catch (error) {
+      logger.error(nome + " in errore: " + ((error && error.stack) || error));
+      if (!res.headersSent) {
+        rispostaErrore(res);
+      } else if (!res.writableEnded) {
+        res.end();
+      }
+    }
+  };
+
+  app.get('/healthcheck', gestisciErrori('/healthcheck', (res) => res.status(503).json({ 'status': 'KO' }), async (req, res) => {
 	await writeToCache("status","ok");
-	let status=await readFromCache("status");  
-    res.json({ 'status': status });
-  })  
+	let status=await readFromCache("status");
+	// Redis non raggiungibile: 503, cosi' il bilanciatore non considera sana l'istanza
+	res.status(status=="ok" ? 200 : 503).json({ 'status': status });
+  }))
       
 const allowedOrigins = ['https://webcb-stage.costacrociere.it','https://webcb.costacrociere.it','https://www.costacruises.fi','https://www.costacruzeiros.com.pt','https://www.costacroisieres.be','https://www.costacruises.co.uk',
 'https://www.costacruceros.com','https://www.costacruises.ru','https://www.costacruzeiros.com','https://www.costacruises.nl','https://www.costakreuzfahrten.ch','https://www.costakreuzfahrten.at',
@@ -132,8 +150,8 @@ const allowedOrigins = ['https://webcb-stage.costacrociere.it','https://webcb.co
   const OPTIONAL_FIELDS = ['Subject', 'ScheduleDayTime', 'OptionId', 'FirstName',
                            'LastName', 'Email', 'ReasonWhy', 'ReasonDesc', 'PageType'];
 
-  app.post('/callback', async (req, res) => {
-  
+  app.post('/callback', gestisciErrori('/callback', (res) => res.json({"status":"KO|na"}), async (req, res) => {
+
   	const UUID=Math.round((new Date()).getTime());
 	// variabili di richiesta: devono restare locali, altrimenti richieste
 	// concorrenti nello stesso worker si sovrascrivono a vicenda
@@ -181,7 +199,8 @@ const allowedOrigins = ['https://webcb-stage.costacrociere.it','https://webcb.co
 		return;
 	}	
 	var bearerToken=await readFromCache('token');
-	
+	if (bearerToken==null) bearerToken="";
+
 	let params={
 	  "flowId": "c986a982-418d-469d-b2c8-ba4c06863378",
 	  "inputData": {
@@ -227,16 +246,22 @@ const allowedOrigins = ['https://webcb-stage.costacrociere.it','https://webcb.co
 		});
 
 		data = await response.json();
+		if (response.status!=200 || !data.access_token){
+			res.json({"status":"KO|na"});
+			logger.info(UUID + "-> KO|auth (" + response.status + ")");
+			return;
+		}
 		bearerToken=data.access_token;
-		
-		if (writeToCache('token', data.access_token)){
+
+		// senza await writeToCache restituisce una Promise, sempre "vera": il ramo
+		// else non scattava mai (e se fosse scattato avrebbe risposto due volte)
+		if (await writeToCache('token', data.access_token)){
 			logger.info(UUID + "-> " + "token recuperato da auth API");
-			console.log("token recuperato da auth API")
 		}else{
-			logger.info(UUID + "-> " + "recupero token in errore");
-			res.json({"status":"KO|na"})
-		}	
-	
+			// il token appena ottenuto vale comunque per questa richiesta
+			logger.info(UUID + "-> " + "token recuperato ma non salvato in cache");
+		}
+
 		response = await fetch('https://api.mypurecloud.ie/api/v2/flows/executions', {
 			 method: 'POST',
 				body: JSON.stringify(params),
@@ -251,13 +276,18 @@ const allowedOrigins = ['https://webcb-stage.costacrociere.it','https://webcb.co
 			res.json({"status":"KO|na"});
 			logger.info(UUID + "-> KO|api execution");
 		}
+	}else{
+		// errore diverso da 401 (400, 403, 429, 5xx): prima la richiesta restava
+		// senza risposta fino al timeout del bilanciatore
+		res.json({"status":"KO|na"});
+		logger.info(UUID + "-> KO|api execution (" + response.status + ")");
 	}
-   
-  });
+
+  }));
   
   
 
-  app.get('/rule', async (req, res) => {
+  app.get('/rule', gestisciErrori('/rule', (res) => { res.writeHead(503, { 'Content-Type': 'text/javascript' }); res.end("//error"); }, async (req, res) => {
 	const queryData = url.parse(req.url, true).query;
 	const host = encodeURIComponent(req.headers.host);
 	const loc = encodeURIComponent(queryData.l);
@@ -265,14 +295,17 @@ const allowedOrigins = ['https://webcb-stage.costacrociere.it','https://webcb.co
 	let queue = encodeURIComponent(queryData.queue);
 
   	const sSlots=await readFromCache('Slots');
-  	const Slots=JSON.parse(sSlots);		
+  	// null se la chiave non c'e' (es. Redis appena svuotato): si risponde senza slot
+  	const Slots=sSlots ? JSON.parse(sSlots) : null;
 
 	if (!Number.isInteger(queryData.tsoff*1) || Math.abs(queryData.tsoff*1)>720){
 		res.writeHead(503, { 'Content-Type': 'text/javascript' });
 		res.end("//offset error");
 		return;
 	}
-	if (!isValidHttpUrl(queryData.l)){
+	// un parametro ripetuto (?l=a&l=b) arriva come array: senza il controllo sul
+	// tipo resultAction chiamava toLowerCase su un array e il worker andava in crash
+	if (typeof queryData.l !== 'string' || !isValidHttpUrl(queryData.l)){
 		res.writeHead(503, { 'Content-Type': 'text/javascript' });
 		res.end("//location error");
 		return;
@@ -288,11 +321,14 @@ const allowedOrigins = ['https://webcb-stage.costacrociere.it','https://webcb.co
 	
 	let slots="";
 	if (queue!=null && queue!=="undefined"){
-		var t=Slots.SlotQueues[queue];
-		var entity=Slots.entities.find(e=>e.key==t);
-		if(entity!=null){
-		
-			let filtered= entity.calculatedSlots.filter(e=>e.availableSlot>e.count).map(item => ({
+		var t=(Slots && Slots.SlotQueues) ? Slots.SlotQueues[queue] : null;
+		var entity=(t!=null && Array.isArray(Slots.entities)) ? Slots.entities.find(e=>e.key==t) : null;
+		if(entity!=null && Array.isArray(entity.calculatedSlots)){
+
+			// costastats ricalcola gli slot solo quando rinnova il token (circa una volta
+			// al giorno): senza questo filtro si proponevano anche fasce gia' passate
+			const adesso=new Date().toISOString();
+			let filtered= entity.calculatedSlots.filter(e=>e.availableSlot>e.count && e.end>adesso).map(item => ({
 			   "schedulingTime": item.start,
 	                "duration":((new Date(item.end))-(new Date(item.start)))/(1000*60*60)
 			}));
@@ -333,9 +369,9 @@ const allowedOrigins = ['https://webcb-stage.costacrociere.it','https://webcb.co
 		//res.end(slots + `try{$setAvailableSchedulingTime([{"schedulingTime":"` + new Date().toISOString().split('T')[0] + `T09:00:00Z","duration":2},{"schedulingTime":"` + new Date().toISOString().split('T')[0] + `T11:00:00Z","duration":2},{"schedulingTime":"` + new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split('T')[0] + `T09:00:00Z","duration":2},{"schedulingTime":"` + new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split('T')[0] + `T14:00:00Z","duration":2}]);}catch(e){};setTimeout("try{$enableCallMeNow(false)}catch(e){};try{$enableChat(false)}catch(e){}",2000);setTimeout(function(){const scriptOSPEElement = document.createElement("script");scriptOSPEElement.src = "https://${host}/rule?l=${loc}&tsoff="+(new Date().getTimezoneOffset());document.head.appendChild(scriptOSPEElement);},60000)`);		
 		res.end(slots + `;setTimeout(function(){try{$enableCallMeNow(false)} catch(e){}},2000);\n` + `setTimeout(function(){const scriptOSPEElement = document.createElement("script");scriptOSPEElement.src = "https://${host}/rule?l=${loc}&queue=${queue}&tsoff="+(new Date().getTimezoneOffset());document.head.appendChild(scriptOSPEElement);},60000);`);
 	}
-  
-  
-  });
+
+
+  }));
 
 	app.use((req, res, next) => {
 		res.writeHead(404, { 'Content-Type': 'text/html' });
@@ -361,12 +397,14 @@ function isValidHttpUrl(string) {
     return url.protocol === "https:";
 }
 
-function readFromCache(key) {
+// async + await: senza, il try/catch non intercettava gli errori di Redis
+// (arrivano come Promise rifiutata) e il null di ripiego non veniva mai restituito
+async function readFromCache(key) {
     try {
-        return redis.get(key);
+        return await redis.get(key);
     } catch (error) {
-		return null;
-        console.error('Errore durante la lettura dalla cache:'+key, error);
+        logger.error('Errore durante la lettura dalla cache: ' + key + ' ' + ((error && error.message) || error));
+        return null;
     }
 }
 async function writeToCache(key, value) {
