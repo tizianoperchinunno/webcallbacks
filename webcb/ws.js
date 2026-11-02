@@ -147,16 +147,6 @@ const allowedOrigins = ['https://webcb-stage.costacrociere.it','https://webcb.co
     	{res.json({ "status": "KO"});}
   });
   
-  app.post('/echo', (req, res) => {
-    const postData = req.body;
-	console.log(req.body);
-    res.json({ 'message': 'Received POST data', 'data': postData });
-  });
-
-  app.get('/echo', (req, res) => {
-    res.json({ 'message': 'Received GET data'});
-  });  
-      
   const isFilledString = (v) => typeof v === 'string' && v.trim() !== '';
   const REQUIRED_FIELDS = ['Queue', 'Type', 'PhoneNumber', 'Country', 'Location'];
   const OPTIONAL_FIELDS = ['Subject', 'ScheduleDayTime', 'OptionId', 'FirstName',
@@ -459,8 +449,7 @@ function isIsoDate(str) {
 
 function resultAction(address,minutes,stats){
 	address=address.toLowerCase();
-	console.log(address);
-	if ((address.indexOf("it/cruises.htm")>0 || address.indexOf("it/cruises/")>0 || address.indexOf(".it/offerte.html")>0 || address.indexOf(".it/checkout.")>0 || address.indexOf("/front-end_features/")>0 || address.indexOf(".it/offerte/")>0 || address.indexOf(".it/summary.")>0 || address.indexOf(".it/confirmation.html")>0 || address.indexOf(".it/reservation")>0)){
+	if ((address.indexOf(".it/cruises.htm")>0 || address.indexOf(".it/cruises/")>0 || address.indexOf(".it/offerte.html")>0 || address.indexOf(".it/checkout.")>0 || address.indexOf("/front-end_features/")>0 || address.indexOf(".it/offerte/")>0 || address.indexOf(".it/summary.")>0 || address.indexOf(".it/confirmation.html")>0 || address.indexOf(".it/reservation")>0)){
 		let coda="I_CBWB2C";
 		if (stats.queues[coda]!=null)
 		{
@@ -798,7 +787,9 @@ function resultAction(address,minutes,stats){
 		{
 			return false;
 		}
-	}else if ((address.indexOf("costacruzeiros.co")>0 )){
+	}else if ((address.indexOf("costacruzeiros.com/")>0 )){
+		// "costacruzeiros.com/" con la barra: senza, la regola prendeva anche il sito
+		// del Portogallo (costacruzeiros.com.pt), che non ha il call me now
 		let coda="BR_CBWB2C";
 		
 		if (stats.queues[coda]!=null)
@@ -827,7 +818,6 @@ function resultAction(address,minutes,stats){
 
 function resultActionChat(address,minutes,stats){
 	address=address.toLowerCase();
-	console.log(address);
 	if (address.indexOf("aem-stage2.costacrociere.it")>0  || address.indexOf("aem-uat2.costacrociere.it")>0){
 		let coda="I_LiveChatB2CTest";
 		if (stats.queues[coda]!=null)
