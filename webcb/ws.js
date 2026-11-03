@@ -403,7 +403,7 @@ const allowedOrigins = ['https://webcb-stage.costacrociere.it','https://webcb.co
   const server = createHttpServer(app);
 
   server.listen(8080, () => {
-    console.log(`Worker ${process.pid} started and listening on port 8080`);
+    logger.info(`Worker ${process.pid} started and listening on port 8080`);
   });
 }
 
@@ -458,7 +458,7 @@ function resultAction(address,minutes,stats){
 		{
 			let oOnQueueUsers=stats.queues[coda].oOnQueueUsers;
 			let oActiveUsers=stats.queues[coda].oActiveUsers;
-			console.log(coda + "(min "+minutes+") -> oActiveUsers:" + oActiveUsers + " - oOnQueueUsers:" + oOnQueueUsers);
+			logger.info(coda + "(min "+minutes+") -> oActiveUsers:" + oActiveUsers + " - oOnQueueUsers:" + oOnQueueUsers);
 			if ((minutes>=600 && minutes<=719 && oOnQueueUsers>=5) || (minutes>=720 && minutes<=1079 && oOnQueueUsers>=1) || (minutes>=1080 && minutes<=1139 && oOnQueueUsers>=5)){
 				return true;
 			}
@@ -477,7 +477,7 @@ function resultAction(address,minutes,stats){
 		{
 			let oOnQueueUsers=stats.queues[coda].oOnQueueUsers;
 			let oActiveUsers=stats.queues[coda].oActiveUsers;
-			console.log(coda + " -> oActiveUsers:" + oActiveUsers + " - oOnQueueUsers:" + oOnQueueUsers);
+			logger.info(coda + " -> oActiveUsers:" + oActiveUsers + " - oOnQueueUsers:" + oOnQueueUsers);
 			if ((minutes>=600 && minutes<=719 && oOnQueueUsers>=15) || (minutes>=720 && minutes<=779 && oOnQueueUsers>=25) || (minutes>=900 && minutes<=1079 && oOnQueueUsers>=15)){
 				return true;
 			}
@@ -517,7 +517,7 @@ function resultAction(address,minutes,stats){
 		{
 			let oOnQueueUsers=stats.queues[coda].oOnQueueUsers;
 			let oActiveUsers=stats.queues[coda].oActiveUsers;
-			console.log(coda + " -> oActiveUsers:" + oActiveUsers + " - oOnQueueUsers:" + oOnQueueUsers);
+			logger.info(coda + " -> oActiveUsers:" + oActiveUsers + " - oOnQueueUsers:" + oOnQueueUsers);
 			if ((minutes>=600 && minutes<=779 && oOnQueueUsers>=3) || (minutes>=900 && minutes<=1079 && oOnQueueUsers>=3)){
 				return true;
 			}
@@ -537,7 +537,7 @@ function resultAction(address,minutes,stats){
 		{
 			let oOnQueueUsers=stats.queues[coda].oOnQueueUsers;
 			let oActiveUsers=stats.queues[coda].oActiveUsers;
-			console.log(coda + " -> oActiveUsers:" + oActiveUsers + " - oOnQueueUsers:" + oOnQueueUsers);
+			logger.info(coda + " -> oActiveUsers:" + oActiveUsers + " - oOnQueueUsers:" + oOnQueueUsers);
 			if ((minutes>=600 && minutes<=719 && oOnQueueUsers>=2) || (minutes>=900 && minutes<=1079 && oOnQueueUsers>=2)){
 				return true;
 			}
@@ -557,7 +557,7 @@ function resultAction(address,minutes,stats){
 		{
 			let oOnQueueUsers=stats.queues[coda].oOnQueueUsers;
 			let oActiveUsers=stats.queues[coda].oActiveUsers;
-			console.log(coda + " -> oActiveUsers:" + oActiveUsers + " - oOnQueueUsers:" + oOnQueueUsers);
+			logger.info(coda + " -> oActiveUsers:" + oActiveUsers + " - oOnQueueUsers:" + oOnQueueUsers);
 			if ((minutes>=540 && minutes<=1079 && oOnQueueUsers>=2)){
 				return true;
 			}
@@ -577,7 +577,7 @@ function resultAction(address,minutes,stats){
 		{
 			let oOnQueueUsers=stats.queues[coda].oOnQueueUsers;
 			let oActiveUsers=stats.queues[coda].oActiveUsers;
-			console.log(coda + " -> oActiveUsers:" + oActiveUsers + " - oOnQueueUsers:" + oOnQueueUsers);
+			logger.info(coda + " -> oActiveUsers:" + oActiveUsers + " - oOnQueueUsers:" + oOnQueueUsers);
 			if ((minutes>=600 && minutes<=719 && oOnQueueUsers>=15) || (minutes>=720 && minutes<=779 && oOnQueueUsers>=25) || (minutes>=900 && minutes<=1079 && oOnQueueUsers>=15)){
 				return true;
 			}
@@ -597,7 +597,7 @@ function resultAction(address,minutes,stats){
 		{
 			let oOnQueueUsers=stats.queues[coda].oOnQueueUsers;
 			let oActiveUsers=stats.queues[coda].oActiveUsers;
-			console.log(coda + " -> oActiveUsers:" + oActiveUsers + " - oOnQueueUsers:" + oOnQueueUsers);
+			logger.info(coda + " -> oActiveUsers:" + oActiveUsers + " - oOnQueueUsers:" + oOnQueueUsers);
 			if ((minutes>=600 && minutes<=719 && oOnQueueUsers>=15) || (minutes>=720 && minutes<=779 && oOnQueueUsers>=25) || (minutes>=900 && minutes<=1079 && oOnQueueUsers>=15)){
 				return true;
 			}
@@ -617,7 +617,7 @@ function resultAction(address,minutes,stats){
 		{
 			let oOnQueueUsers=stats.queues[coda].oOnQueueUsers;
 			let oActiveUsers=stats.queues[coda].oActiveUsers;
-			console.log(coda + " -> oActiveUsers:" + oActiveUsers + " - oOnQueueUsers:" + oOnQueueUsers);
+			logger.info(coda + " -> oActiveUsers:" + oActiveUsers + " - oOnQueueUsers:" + oOnQueueUsers);
 			if ((minutes>=600 && minutes<=719 && oOnQueueUsers>=15) || (minutes>=720 && minutes<=779 && oOnQueueUsers>=25) || (minutes>=900 && minutes<=1079 && oOnQueueUsers>=15)){
 				return true;
 			}
@@ -637,7 +637,7 @@ function resultAction(address,minutes,stats){
 		{
 			let oOnQueueUsers=stats.queues[coda].oOnQueueUsers;
 			let oActiveUsers=stats.queues[coda].oActiveUsers;
-			console.log(coda + " -> oActiveUsers:" + oActiveUsers + " - oOnQueueUsers:" + oOnQueueUsers);
+			logger.info(coda + " -> oActiveUsers:" + oActiveUsers + " - oOnQueueUsers:" + oOnQueueUsers);
 			if ((minutes>=600 && minutes<=719 && oOnQueueUsers>=15) || (minutes>=720 && minutes<=779 && oOnQueueUsers>=25) || (minutes>=900 && minutes<=1079 && oOnQueueUsers>=15)){
 				return true;
 			}
@@ -657,7 +657,7 @@ function resultAction(address,minutes,stats){
 		{
 			let oOnQueueUsers=stats.queues[coda].oOnQueueUsers;
 			let oActiveUsers=stats.queues[coda].oActiveUsers;
-			console.log(coda + " -> oActiveUsers:" + oActiveUsers + " - oOnQueueUsers:" + oOnQueueUsers);
+			logger.info(coda + " -> oActiveUsers:" + oActiveUsers + " - oOnQueueUsers:" + oOnQueueUsers);
 			if ((minutes>=600 && minutes<=719 && oOnQueueUsers>=15) || (minutes>=720 && minutes<=779 && oOnQueueUsers>=25) || (minutes>=900 && minutes<=1079 && oOnQueueUsers>=15)){
 				return true;
 			}
@@ -677,7 +677,7 @@ function resultAction(address,minutes,stats){
 		{
 			let oOnQueueUsers=stats.queues[coda].oOnQueueUsers;
 			let oActiveUsers=stats.queues[coda].oActiveUsers;
-			console.log(coda + " -> oActiveUsers:" + oActiveUsers + " - oOnQueueUsers:" + oOnQueueUsers);
+			logger.info(coda + " -> oActiveUsers:" + oActiveUsers + " - oOnQueueUsers:" + oOnQueueUsers);
 			if ((minutes>=480 && minutes<=569 && oOnQueueUsers>=4) || (minutes>=570 && minutes<=989 && oOnQueueUsers>=1) || (minutes>=990 && minutes<=1139 && oOnQueueUsers>=5)){
 				return true;
 			}
@@ -697,7 +697,7 @@ function resultAction(address,minutes,stats){
 		{
 			let oOnQueueUsers=stats.queues[coda].oOnQueueUsers;
 			let oActiveUsers=stats.queues[coda].oActiveUsers;
-			console.log(coda + " -> oActiveUsers:" + oActiveUsers + " - oOnQueueUsers:" + oOnQueueUsers);
+			logger.info(coda + " -> oActiveUsers:" + oActiveUsers + " - oOnQueueUsers:" + oOnQueueUsers);
 			if ((minutes>=480 && minutes<=569 && oOnQueueUsers>=4) || (minutes>=570 && minutes<=989 && oOnQueueUsers>=1) || (minutes>=990 && minutes<=1139 && oOnQueueUsers>=5)){
 				return true;
 			}
@@ -717,7 +717,7 @@ function resultAction(address,minutes,stats){
 		{
 			let oOnQueueUsers=stats.queues[coda].oOnQueueUsers;
 			let oActiveUsers=stats.queues[coda].oActiveUsers;
-			console.log(coda + " -> oActiveUsers:" + oActiveUsers + " - oOnQueueUsers:" + oOnQueueUsers);
+			logger.info(coda + " -> oActiveUsers:" + oActiveUsers + " - oOnQueueUsers:" + oOnQueueUsers);
 			if ((minutes>=480 && minutes<=569 && oOnQueueUsers>=4) || (minutes>=570 && minutes<=989 && oOnQueueUsers>=1) || (minutes>=990 && minutes<=1139 && oOnQueueUsers>=5)){
 				return true;
 			}
@@ -737,7 +737,7 @@ function resultAction(address,minutes,stats){
 		{
 			let oOnQueueUsers=stats.queues[coda].oOnQueueUsers;
 			let oActiveUsers=stats.queues[coda].oActiveUsers;
-			console.log(coda + " -> oActiveUsers:" + oActiveUsers + " - oOnQueueUsers:" + oOnQueueUsers);
+			logger.info(coda + " -> oActiveUsers:" + oActiveUsers + " - oOnQueueUsers:" + oOnQueueUsers);
 			if ((minutes>=540 && minutes<=1139 && oOnQueueUsers>=1) ){
 				return true;
 			}
@@ -757,7 +757,7 @@ function resultAction(address,minutes,stats){
 		{
 			let oOnQueueUsers=stats.queues[coda].oOnQueueUsers;
 			let oActiveUsers=stats.queues[coda].oActiveUsers;
-			console.log(coda + " -> oActiveUsers:" + oActiveUsers + " - oOnQueueUsers:" + oOnQueueUsers);
+			logger.info(coda + " -> oActiveUsers:" + oActiveUsers + " - oOnQueueUsers:" + oOnQueueUsers);
 			if ((minutes>=540 && minutes<=1139 && oOnQueueUsers>=1) ){
 				return true;
 			}
@@ -777,7 +777,7 @@ function resultAction(address,minutes,stats){
 		{
 			let oOnQueueUsers=stats.queues[coda].oOnQueueUsers;
 			let oActiveUsers=stats.queues[coda].oActiveUsers;
-			console.log(coda + " -> oActiveUsers:" + oActiveUsers + " - oOnQueueUsers:" + oOnQueueUsers);
+			logger.info(coda + " -> oActiveUsers:" + oActiveUsers + " - oOnQueueUsers:" + oOnQueueUsers);
 			if ((minutes>=540 && minutes<=1139 && oOnQueueUsers>=1) ){
 				return true;
 			}
@@ -799,7 +799,7 @@ function resultAction(address,minutes,stats){
 		{
 			let oOnQueueUsers=stats.queues[coda].oOnQueueUsers;
 			let oActiveUsers=stats.queues[coda].oActiveUsers;
-			console.log(coda + " -> oActiveUsers:" + oActiveUsers + " - oOnQueueUsers:" + oOnQueueUsers);
+			logger.info(coda + " -> oActiveUsers:" + oActiveUsers + " - oOnQueueUsers:" + oOnQueueUsers);
 			if ((minutes>=540 && minutes<=1139 && oOnQueueUsers>=1) ){
 				return true;
 			}
@@ -827,7 +827,7 @@ function resultActionChat(address,minutes,stats){
 		{
 			let oOnQueueUsers=stats.queues[coda].oOnQueueUsers;
 			let oActiveUsers=stats.queues[coda].oActiveUsers;
-			console.log(coda + "(min "+minutes+") -> oActiveUsers:" + oActiveUsers + " - oOnQueueUsers:" + oOnQueueUsers);
+			logger.info(coda + "(min "+minutes+") -> oActiveUsers:" + oActiveUsers + " - oOnQueueUsers:" + oOnQueueUsers);
 			if (oOnQueueUsers>0){
 				return true;
 			}
